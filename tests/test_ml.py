@@ -4,6 +4,7 @@ import pytest
 from ml.eval_uci_gas import load_batch
 from ml.synth import SCENARIOS, generate_run, generate_runs
 from ml.train_ml import main as train_main
+from src import config
 from src.ai_runtime import MLSignals
 from src.decision_engine import DecisionEngine, Level, Signals
 from src.features import FEATURE_NAMES, WINDOW, FeatureBuffer, features_from_windows
