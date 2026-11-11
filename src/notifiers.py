@@ -161,9 +161,12 @@ class AsyncNotifier:
             time.sleep(0.02)
         return not self.q.unfinished_tasks
 
-    def stop(self) -> None:
+    def stop(self, timeout: float = 5.0) -> bool:
+        """Drain queued notifications, then stop the worker within a bounded timeout."""
+        drained = self.flush(timeout)
         self._stop.set()
-        self._t.join(timeout=2)
+        self._t.join(timeout=max(0.0, timeout))
+        return drained and not self._t.is_alive()
 
 
 def load_notifiers(path: str, env=os.environ) -> tuple:
