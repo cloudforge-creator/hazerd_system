@@ -406,3 +406,16 @@ def test_face_engine_reports_missing_models_clearly():
         assert "missing" in msg
         with pytest.raises(FileNotFoundError, match="download_face_models"):
             FaceEngine()
+
+
+def test_stale_camera_state_expires_tracks_and_hazard_occupancy(store):
+    person(store, "Ali Khan", "Operator", 1)
+    d = Detection((20, 80, 70, 70), 0.9, vec(1, 0.2, 3))
+    mon, hub, lv = make_monitor(store, [[d]], [ZONE], level=Level.CRITICAL)
+    feed(mon, 5)
+    assert mon.snapshot() and mon.people_in_hazard()
+    mon._expire_stale_state()
+    assert mon.snapshot() == [] and mon.people_in_hazard() == []
+    assert mon.status()["camera_state"] == "STALE"
+    assert any(e["kind"] == "PERSON_LEFT" and e["detail"] == "camera frame became stale"
+               for e in store.recent_events(100))
