@@ -59,6 +59,19 @@ def test_cnn_critical_override_requires_independent_sensor_corroboration():
     assert "RELAY_SHUTDOWN" in d.actions
 
 
+def test_ml_state_model_alone_cannot_trigger_critical_shutdown():
+    d = DecisionEngine().decide(reading(0, gas=180), Signals(ml_hazard=0.85))
+    assert d.level == Level.WARNING
+    assert d.ml_score == config.ML_SOLO_MAX_SCORE
+    assert "ml_critical_unconfirmed_warning" in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_ml_state_model_preserves_physical_critical_detection():
+    d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.0))
+    assert d.level == Level.CRITICAL
+
+
 def test_ai_can_raise_but_never_lower_a_rule_alarm():
     eng = DecisionEngine()
     d = eng.decide(reading(0, gas=700), Signals(gas_risk=0.0))
