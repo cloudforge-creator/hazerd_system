@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Press line",
+    "points": [[0.05, 0.10], [0.55, 0.10], [0.55, 0.90], [0.05, 0.90]],
+    "hazard_when_alert": true,
+    "allowed_designations": ["Operator", "Supervisor"]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "class_names": [
+    "none",
+    "smoke",
+    "fire"
+  ],
+  "img_size": 224,
+  "input": "raw RGB 0..255 (rescaling inside model)",
+  "fire_threshold": 0.38,
+  "seed": 42,
+  "weights": "imagenet",
+  "tensorflow": "2.21.0"
+}

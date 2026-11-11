@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Logs</h2>
+  <p>
+    <a href="{{ url_for('logs', kind='events') }}">Hazard events</a> |
+    <a href="{{ url_for('logs', kind='readings') }}">Sensor readings</a> |
+    <a href="{{ url_for('logs', kind='system') }}">System events</a> |
+    <a href="{{ url_for('logs', kind='people') }}">People events</a>
+    <span class="muted">(latest {{ n }})</span>
+  </p>
+  <div class="scroll">
+  <table>
+    <thead><tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for r in rows %}<tr>{% for c in columns %}<td>{{ r[c] | cell(c) }}</td>{% endfor %}</tr>
+    {% else %}<tr><td class="muted">No entries.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

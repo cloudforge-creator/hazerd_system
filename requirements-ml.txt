@@ -1,0 +1,10 @@
+# Optional deep-learning/runtime camera dependencies.
+# The packaged fire CNN was trained on Colab with TensorFlow 2.21.0.
+# This project environment pins TensorFlow 2.18.0; src/fire_cnn.py first tries
+# the .keras file and then uses fire_cnn_weights.npz if Keras compatibility differs.
+-r requirements.txt
+tensorflow==2.18.0   # runtime version; training version recorded in models/fire_cnn_meta.json (2.21.0)
+opencv-python>=4.8
+pillow>=10.0
+matplotlib>=3.7
+psutil>=5.9   # optional: process memory in the soak test

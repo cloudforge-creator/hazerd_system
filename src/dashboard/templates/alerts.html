@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Alerts <span class="muted">({{ active }} active)</span></h2>
+  <table>
+    <thead><tr><th>ID</th><th>Time</th><th>Level</th><th>Details</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in alerts %}
+      <tr>
+        <td>{{ a.id }}</td>
+        <td>{{ a.ts | dt }}</td>
+        <td><span class="badge small lvl-{{ a.level }}">{{ a.level }}</span></td>
+        <td>{{ a.message }}</td>
+        <td>{{ a.status }}</td>
+        <td>
+          {% if a.status == 'ACTIVE' and session.role == 'admin' %}
+          <form method="post" action="{{ url_for('ack', alert_id=a.id) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Acknowledge</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="muted">No alerts.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

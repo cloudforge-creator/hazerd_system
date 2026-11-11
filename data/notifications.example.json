@@ -1,0 +1,24 @@
+{
+  "telegram": {
+    "enabled": false,
+    "bot_token_env": "HAZARD_TG_TOKEN",
+    "admin_chat_ids": ["123456789"],
+    "user_chat_ids": []
+  },
+  "email": {
+    "enabled": false,
+    "smtp_host": "smtp.example.com",
+    "smtp_port": 587,
+    "use_tls": true,
+    "from": "hazard-monitor@example.com",
+    "username_env": "HAZARD_SMTP_USER",
+    "password_env": "HAZARD_SMTP_PASS",
+    "admin_to": ["admin@example.com"],
+    "user_to": []
+  },
+  "webhook": {
+    "enabled": false,
+    "url": "https://example.com/hazard-hook",
+    "secret_env": "HAZARD_WEBHOOK_SECRET"
+  }
+}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not enabled %}
+<section class="card"><h2>Personnel</h2><p class="muted">Person recognition is off. Start the dashboard with <code>--people</code> (needs <code>--camera</code> and the face models).</p></section>
+{% else %}
+<section class="card">
+  <h2>Personnel</h2>
+  {% if not engine_ok %}<div class="flash error">Face models are not installed, so faces cannot be enrolled or recognised. Run <code>python scripts/download_face_models.py</code>.</div>{% endif %}
+  <p class="muted"><strong>Privacy:</strong> face templates are biometric data. Only numeric templates are stored (never photos), only with the person's consent, only on this machine. Deleting a person removes their templates and events.</p>
+  <table>
+    <thead><tr><th>Name</th><th>Designation</th><th>Employee ID</th><th>Face samples</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in people %}
+    <tr>
+      <td>{{ p.name }}</td><td>{{ p.designation }}</td><td>{{ p.employee_id or '' }}</td><td>{{ p.samples }}</td>
+      <td>{{ 'disabled' if p.disabled else 'active' }}</td>
+      <td>
+      {% if is_admin %}
+        <form method="post" action="{{ url_for('personnel_enroll', person_id=p.id) }}" enctype="multipart/form-data" class="block">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="file" name="photos" accept="image/*" multiple>
+          <button type="submit">Enrol photos</button>
+        </form>
+        {% if has_hub %}
+        <form method="post" action="{{ url_for('personnel_enroll_live', person_id=p.id) }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Capture from camera</button></form>
+        {% endif %}
+        <form method="post" action="{{ url_for('personnel_action', person_id=p.id, action='toggle') }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">{{ 'Enable' if p.disabled else 'Disable' }}</button></form>
+        <form method="post" action="{{ url_for('personnel_action', person_id=p.id, action='clear') }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Clear samples</button></form>
+        <form method="post" action="{{ url_for('personnel_action', person_id=p.id, action='delete') }}" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">Delete</button></form>
+      {% endif %}
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="muted">Nobody enrolled yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% if is_admin %}
+<section class="card">
+  <h2>Add a person</h2>
+  <form method="post" action="{{ url_for('personnel_add') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Full name <input name="name" maxlength="80" required></label>
+    <label>Designation <input name="designation" maxlength="80" required></label>
+    <label>Employee ID (optional) <input name="employee_id" maxlength="40"></label>
+    <label class="check"><input type="checkbox" name="consent" value="yes"> This person has been told that their face will be enrolled and has agreed.</label>
+    <button type="submit">Add person</button>
+  </form>
+  <p class="muted">Tip: enrol 3&ndash;5 photos per person (different angles and lighting), one person per photo. The names on the live video show only Latin characters; the table here shows the full name.</p>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <h2>Configuration</h2>
+  {% if not is_admin %}<p class="muted">Read-only. Changing thresholds requires the admin role.</p>{% endif %}
+  <p class="muted">Changes apply immediately, are saved, and are written to the system log. Raising thresholds makes the system less sensitive: recalibrate on real hardware before relying on them.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <table>
+      <thead><tr><th>Setting</th><th>Value</th><th>Allowed</th><th>Meaning</th></tr></thead>
+      <tbody>
+      {% for name, spec in tunables.items() %}
+        <tr>
+          <td><code>{{ name }}</code></td>
+          <td><input name="{{ name }}" value="{{ values[name] }}" {% if not is_admin %}disabled{% endif %}></td>
+          <td>{{ spec[1] }} &ndash; {{ spec[2] }}</td>
+          <td>{{ spec[3] }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% if is_admin %}<button type="submit">Save</button>{% endif %}
+  </form>
+</section>
+<section class="card">
+  <h2>Notifications</h2>
+  {% for n in notify.notes %}<p class="muted">{{ n }}</p>{% else %}<p class="muted">No notification channels configured (log and dashboard only).</p>{% endfor %}
+  {% if notify.stats %}<p>Queued {{ notify.stats.queued }}, delivered {{ notify.stats.delivered }}, failed {{ notify.stats.failed }}, dropped {{ notify.stats.dropped }}{% if notify.stats.last_error %} &mdash; last error: {{ notify.stats.last_error }}{% endif %}</p>{% endif %}
+  {% if is_admin %}
+  <form method="post" action="{{ url_for('notifications_test') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit">Send test notification</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

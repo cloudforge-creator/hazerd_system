@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+data/logs/*.csv
+data/raw/
+models/*.h5
+models/*.keras
+*.env
+firebase-key*.json
+
+data/secret_key
+data/runtime_config.json
+*.db

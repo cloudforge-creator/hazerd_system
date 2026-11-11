@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="crash-banner" class="flash error hidden">MONITORING STOPPED. The relay was shut down as a fail-safe. Check the sensor link and restart.</div>
+<div class="grid">
+  <section class="card">
+    <h2>Hazard status</h2>
+    <div id="level" class="badge lvl-NONE">WAITING</div>
+    <dl>
+      <dt>Risk score</dt><dd id="score">–</dd>
+      <dt>Predicted (10 s)</dt><dd id="predicted">–</dd>
+      <dt>Early warning</dt><dd id="early">–</dd>
+      <dt>Why</dt><dd id="reasons">–</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Sensors</h2>
+    <dl>
+      <dt>Gas (ADC)</dt><dd id="gas">–</dd>
+      <dt>Temperature (&deg;C)</dt><dd id="temp">–</dd>
+      <dt>Humidity (%)</dt><dd id="hum">–</dd>
+      <dt>Flame</dt><dd id="flame">–</dd>
+      <dt>Sensor faults</dt><dd id="faults">–</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2>Response</h2>
+    <dl>
+      <dt>Machine relay</dt><dd id="relay">–</dd>
+      <dt>Buzzer</dt><dd id="buzzer">–</dd>
+    </dl>
+    {% if session.role == 'admin' %}
+    <form method="post" action="{{ url_for('reset_latch') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Re-arm machine (only when SAFE)</button>
+    </form>
+    {% else %}<p class="muted">Re-arming requires the admin role.</p>{% endif %}
+  </section>
+  <section class="card">
+    <h2>System health</h2>
+    <dl>
+      <dt>Mode</dt><dd id="mode">–</dd>
+      <dt>Uptime (s)</dt><dd id="uptime">–</dd>
+      <dt>Cycles / errors</dt><dd id="steps">–</dd>
+      <dt>Last reading age (s)</dt><dd id="age">–</dd>
+      <dt>Last error</dt><dd id="lasterr">–</dd>
+      <dt>AI</dt><dd id="ai">–</dd>
+    </dl>
+  </section>
+</div>
+<div class="grid charts">
+  <section class="card"><h2>Risk score</h2><canvas id="chart-risk" width="560" height="180"></canvas></section>
+  <section class="card"><h2>Gas (ADC)</h2><canvas id="chart-gas" width="560" height="180"></canvas></section>
+  <section class="card"><h2>Temperature (&deg;C)</h2><canvas id="chart-temp" width="560" height="180"></canvas></section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='app.js') }}"></script>{% endblock %}

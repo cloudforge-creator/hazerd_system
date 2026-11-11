@@ -1,0 +1,186 @@
+{
+  "splits": {
+    "train": 489,
+    "val": 105,
+    "test": 106
+  },
+  "ml_state_test": {
+    "accuracy": 0.9849,
+    "macro_f1": 0.9173,
+    "per_class": {
+      "0": {
+        "precision": 0.9992,
+        "recall": 0.9899,
+        "f1": 0.9945
+      },
+      "1": {
+        "precision": 0.708,
+        "recall": 0.8553,
+        "f1": 0.7747
+      },
+      "2": {
+        "precision": 0.9804,
+        "recall": 0.9852,
+        "f1": 0.9828
+      }
+    },
+    "confusion_matrix": [
+      [
+        19708,
+        201,
+        0
+      ],
+      [
+        16,
+        662,
+        96
+      ],
+      [
+        0,
+        72,
+        4791
+      ]
+    ]
+  },
+  "rule_engine_state_test": {
+    "accuracy": 0.9807,
+    "macro_f1": 0.8992,
+    "per_class": {
+      "0": {
+        "precision": 0.999,
+        "recall": 0.9887,
+        "f1": 0.9938
+      },
+      "1": {
+        "precision": 0.6339,
+        "recall": 0.8592,
+        "f1": 0.7296
+      },
+      "2": {
+        "precision": 0.9812,
+        "recall": 0.9673,
+        "f1": 0.9742
+      }
+    },
+    "confusion_matrix": [
+      [
+        19684,
+        225,
+        0
+      ],
+      [
+        19,
+        665,
+        90
+      ],
+      [
+        0,
+        159,
+        4704
+      ]
+    ]
+  },
+  "ml_early_window_test": {
+    "threshold": 0.8,
+    "precision": 0.7173,
+    "recall": 0.7525,
+    "f1": 0.7345,
+    "accuracy": 0.9863,
+    "positive_rate": 0.0252
+  },
+  "event_level_test": {
+    "ml_early_warning": {
+      "runs_with_critical": 31,
+      "detected_before_critical": 26,
+      "detection_rate": 0.8387,
+      "median_lead_s": 10.0,
+      "p10_lead_s": 5.75,
+      "clean_runs": 75,
+      "false_alarm_runs": 3,
+      "false_alarm_run_rate": 0.04,
+      "by_scenario": {
+        "fire": {
+          "critical_runs": 13,
+          "detected": 9,
+          "clean_runs": 0,
+          "false_alarms": 0
+        },
+        "spray": {
+          "critical_runs": 0,
+          "detected": 0,
+          "clean_runs": 14,
+          "false_alarms": 1
+        },
+        "overheat": {
+          "critical_runs": 4,
+          "detected": 4,
+          "clean_runs": 13,
+          "false_alarms": 1
+        },
+        "gas_leak": {
+          "critical_runs": 14,
+          "detected": 13,
+          "clean_runs": 1,
+          "false_alarms": 1
+        }
+      }
+    },
+    "trend_baseline": {
+      "runs_with_critical": 31,
+      "detected_before_critical": 26,
+      "detection_rate": 0.8387,
+      "median_lead_s": 7.25,
+      "p10_lead_s": 2.25,
+      "clean_runs": 75,
+      "false_alarm_runs": 8,
+      "false_alarm_run_rate": 0.1067,
+      "by_scenario": {
+        "fire": {
+          "critical_runs": 13,
+          "detected": 8,
+          "clean_runs": 0,
+          "false_alarms": 0
+        },
+        "humid": {
+          "critical_runs": 0,
+          "detected": 0,
+          "clean_runs": 12,
+          "false_alarms": 1
+        },
+        "spray": {
+          "critical_runs": 0,
+          "detected": 0,
+          "clean_runs": 14,
+          "false_alarms": 1
+        },
+        "slow_leak": {
+          "critical_runs": 0,
+          "detected": 0,
+          "clean_runs": 9,
+          "false_alarms": 1
+        },
+        "overheat": {
+          "critical_runs": 4,
+          "detected": 4,
+          "clean_runs": 13,
+          "false_alarms": 4
+        },
+        "gas_leak": {
+          "critical_runs": 14,
+          "detected": 14,
+          "clean_runs": 1,
+          "false_alarms": 1
+        }
+      }
+    }
+  },
+  "meta": {
+    "seed": 42,
+    "runs": 700,
+    "synthetic": true,
+    "sklearn": "1.7.2",
+    "python": "3.10.11",
+    "window": 60,
+    "horizon_s": 10.0
+  }
+}

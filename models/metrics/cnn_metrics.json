@@ -1,0 +1,79 @@
+{
+  "split_counts": {
+    "train": {
+      "none": 6802,
+      "smoke": 4091,
+      "fire": 4046
+    },
+    "val": {
+      "none": 1724,
+      "smoke": 736,
+      "fire": 925
+    },
+    "test": {
+      "none": 1312,
+      "smoke": 1040,
+      "fire": 851
+    }
+  },
+  "three_class_test": {
+    "accuracy": 0.8411,
+    "macro_f1": 0.842,
+    "per_class": {
+      "none": {
+        "precision": 0.8289,
+        "recall": 0.8788,
+        "f1": 0.8531
+      },
+      "smoke": {
+        "precision": 0.8157,
+        "recall": 0.7615,
+        "f1": 0.7877
+      },
+      "fire": {
+        "precision": 0.8906,
+        "recall": 0.8801,
+        "f1": 0.8853
+      }
+    },
+    "confusion_matrix(rows=true, cols=pred; none,smoke,fire)": [
+      [
+        1153,
+        136,
+        23
+      ],
+      [
+        179,
+        792,
+        69
+      ],
+      [
+        59,
+        43,
+        749
+      ]
+    ]
+  },
+  "fire_vs_rest_test": {
+    "threshold": 0.38,
+    "recall_target_feasible_on_val": true,
+    "precision": 0.8704,
+    "recall": 0.8919,
+    "f1": 0.881,
+    "roc_auc": 0.9737,
+    "target_met_f1>=0.90_and_recall>=0.92": false
+  },
+  "meta": {
+    "class_names": [
+      "none",
+      "smoke",
+      "fire"
+    ],
+    "img_size": 224,
+    "input": "raw RGB 0..255 (rescaling inside model)",
+    "fire_threshold": 0.38,
+    "seed": 42,
+    "weights": "imagenet",
+    "tensorflow": "2.21.0"
+  }
+}
