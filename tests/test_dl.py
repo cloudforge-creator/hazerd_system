@@ -199,3 +199,23 @@ def test_fire_cnn_portable_weights_fallback_matches_original(tmp_path, monkeypat
         fh.write(b"x")
     stale = FireCNN(str(tmp_path))
     assert not stale.enabled and "failed to load" in stale.status
+
+
+def test_fire_cnn_portable_weights_load_without_keras_file(tmp_path):
+    tf = pytest.importorskip("tensorflow")
+    from src.fire_cnn import FireCNN, export_weights, WEIGHTS_NPZ
+    L = tf.keras.layers
+    base = tf.keras.applications.MobileNetV2(input_shape=(32, 32, 3), include_top=False, weights=None, pooling="avg")
+    model = tf.keras.Sequential([L.Input((32, 32, 3)), L.Rescaling(1 / 127.5, offset=-1.0),
+                                 base, L.Dense(3, activation="softmax")])
+    keras_path = str(tmp_path / "fire_cnn.keras")
+    model.save(keras_path)
+    (tmp_path / "fire_cnn_meta.json").write_text(json.dumps({
+        "class_names": ["none", "smoke", "fire"], "img_size": 32
+    }))
+    export_weights(keras_path, str(tmp_path / WEIGHTS_NPZ))
+    os.remove(keras_path)
+    cnn = FireCNN(str(tmp_path))
+    assert cnn.enabled and "keras artifact missing" in cnn.status
+    probs = cnn.predict(np.zeros((40, 40, 3), dtype=np.uint8))
+    assert probs.shape == (3,) and np.isfinite(probs).all()
