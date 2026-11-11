@@ -107,6 +107,7 @@ class DecisionEngine:
         self._calm = 0
         self._fault_cycles = 0
         self._trend_early_consec = 0
+        self._gas_critical_consec = 0
         self._temps = deque()
         self.forecaster = RiskForecaster()
 
@@ -142,6 +143,18 @@ class DecisionEngine:
 
         # sub-scores from usable fields only
         gas = gas_rule(reading.gas_raw) if _usable(reading, "gas_raw") else 0.0
+        gas_critical_candidate = _usable(reading, "gas_raw") and gas >= config.CRITICAL_THRESHOLD
+        self._gas_critical_consec = (
+            self._gas_critical_consec + 1 if gas_critical_candidate else 0
+        )
+        gas_critical_confirmed = self._gas_critical_consec >= config.GAS_CRITICAL_CONSEC
+        # Keep the observed score for diagnostics, but prevent a single gas spike
+        # from independently issuing a relay shutdown before persistence is confirmed.
+        gas_fusion = gas if gas_critical_confirmed else min(
+            gas, config.CRITICAL_THRESHOLD - 0.01
+        )
+        if gas_critical_candidate and not gas_critical_confirmed:
+            reasons.append("gas_critical_pending_confirmation")
         temp = 0.0
         if _usable(reading, "temperature"):
             temp = temp_rule(reading.temperature, self._temp_rate(reading.timestamp, reading.temperature))
@@ -152,7 +165,7 @@ class DecisionEngine:
         # model signals remain subject to the validation and corroboration guards below.
         physical_gas, physical_temp = gas, temp
         physical_critical = (
-            physical_gas >= config.CRITICAL_THRESHOLD
+            gas_critical_confirmed
             or physical_temp >= config.CRITICAL_THRESHOLD
             or (_usable(reading, "flame") and reading.flame == 1)
         )
@@ -193,7 +206,7 @@ class DecisionEngine:
         ml = model_raw if physical_critical else min(model_raw, ml_cap)
         if model_raw >= config.CRITICAL_THRESHOLD and not physical_critical:
             reasons.append("ml_critical_unconfirmed_warning")
-        scores = {"gas": gas, "temp": temp, "fire": fire}
+        scores = {"gas": gas_fusion, "temp": temp, "fire": fire}
         # ML counts toward the base score but NOT toward corroboration (it re-reads the
         # same physical signals, so it must not double-count as independent evidence).
         cnn_unconfirmed = fire_probability is not None and not sensor_corroboration
