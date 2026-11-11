@@ -163,7 +163,14 @@ class DecisionEngine:
 
         # AI may raise rule scores, but it never lowers rule-based evidence; individual
         # model signals remain subject to the validation and corroboration guards below.
-        physical_gas, physical_temp = gas, temp
+        # A gas reading that has crossed the CRITICAL threshold but has not yet
+        # passed the persistence check must not corroborate a CNN shutdown.
+        # Sub-critical gas readings remain eligible as physical corroboration.
+        physical_gas = (
+            gas if not gas_critical_candidate or gas_critical_confirmed
+            else min(gas, config.CNN_CORROBORATION_MIN - 0.01)
+        )
+        physical_temp = temp
         physical_critical = (
             gas_critical_confirmed
             or physical_temp >= config.CRITICAL_THRESHOLD
