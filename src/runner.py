@@ -72,6 +72,7 @@ class Runner(threading.Thread):
         self.live.crashed = True
         try:
             self.system.responder.link.send("RELAY:0")
+            self.system.responder.relay_latched = True
             self.system.storage.log_system(
                 "relay_shutdown_sent",
                 "RELAY:0 serial write completed; firmware acknowledgement not available",
