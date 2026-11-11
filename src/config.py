@@ -19,6 +19,7 @@ VALID_RANGES = {
 # ---------------------------------------------------------------------------
 GAS_SAFE_MAX = 300            # raw ADC at/below this -> gas score 0
 GAS_CRITICAL = 600            # raw ADC at/above this -> gas score 1
+GAS_CRITICAL_CONSEC = 3      # require 3 consecutive critical gas cycles (1.5 s at 2 Hz)
 TEMP_SAFE_MAX = 40.0          # deg C
 TEMP_CRITICAL = 70.0
 TEMP_RATE_CRITICAL = 2.0      # deg C per second rise -> rate score 1
