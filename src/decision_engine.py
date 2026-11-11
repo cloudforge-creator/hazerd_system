@@ -106,6 +106,7 @@ class DecisionEngine:
         self.level = Level.SAFE
         self._calm = 0
         self._fault_cycles = 0
+        self._trend_early_consec = 0
         self._temps = deque()
         self.forecaster = RiskForecaster()
 
@@ -239,7 +240,9 @@ class DecisionEngine:
         # early warning
         predicted, slope = self.forecaster.update(reading.timestamp, fused)
         predicted_level = level_for(predicted)
-        trend_early = slope >= config.FORECAST_MIN_SLOPE and predicted_level == Level.CRITICAL
+        trend_candidate = slope >= config.FORECAST_MIN_SLOPE and predicted_level == Level.CRITICAL
+        self._trend_early_consec = (self._trend_early_consec + 1 if trend_candidate else 0)
+        trend_early = self._trend_early_consec >= config.TREND_EARLY_CONSEC
         ml_early = bool(signals.ml_early_alarm)
         early = (trend_early or ml_early) and self.level != Level.CRITICAL
         if early:
