@@ -181,3 +181,13 @@ def test_lstm_cannot_physically_corroborate_cnn_or_trigger_shutdown():
     assert "cnn_fire_unconfirmed_warning" in d.reasons
     assert "cnn_fire_corroborated_override" not in d.reasons
     assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_trend_early_warning_requires_consecutive_predictions(monkeypatch):
+    eng = DecisionEngine()
+    monkeypatch.setattr(eng.forecaster, "update", lambda ts, score: (0.71, 0.02))
+    first = eng.decide(reading(0))
+    second = eng.decide(reading(0.5))
+    assert not first.early_warning
+    assert second.early_warning
+    assert "early_warning" in second.reasons
