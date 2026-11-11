@@ -110,6 +110,9 @@ class SerialSensorReader:
             self.send("HEARTBEAT")
         return reading
 
+    def heartbeat(self) -> None:
+        self.send("HEARTBEAT")
+
     def send(self, command: str) -> None:
         self.ser.write((command + "\n").encode("ascii"))
 
