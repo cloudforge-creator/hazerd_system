@@ -68,6 +68,10 @@ def test_training_writes_artifacts_and_reasonable_metrics(trained):
     assert m["meta"]["synthetic"] is True
     assert m["ml_state_test"]["accuracy"] > 0.9
     assert m["ml_state_test"]["macro_f1"] > 0.75
+    selected = m["early_threshold_selection_validation"]
+    assert 0.10 <= selected["threshold"] <= 0.95
+    assert "detection_target_met" in selected and "false_alarm_target_met" in selected
+    assert selected["event_report"]["clean_runs"] > 0
 
 
 def test_no_split_leakage_between_runs():
