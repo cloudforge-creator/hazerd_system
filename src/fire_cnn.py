@@ -147,7 +147,7 @@ class FireCNN:
                 keras_error = exc
 
         detail = f"; Keras: {keras_error}" if keras_error else ""
-        self.status = f"fire CNN unavailable (no usable model/portable weights{detail}) - camera ignored"
+        self.status = f"fire CNN failed to load (no usable model/portable weights{detail}) - camera ignored"
 
     @property
     def enabled(self) -> bool:
