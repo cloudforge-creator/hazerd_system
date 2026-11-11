@@ -18,6 +18,10 @@ When the hardware arrives: flash `arduino/hazard_sensors/hazard_sensors.ino`, th
 | M5 Flask admin dashboard: login, roles, live monitoring, alerts, logs, config, camera, personnel, users | 8.0 | implemented; package test records describe HTTP integration checks. Browser visual review and live camera operation still require a local run; face accuracy is unmeasured |
 | Testing/evaluation C1-C5, docs | 10.0, 12.0 | suite built and run on the project machine (`evaluation/results/REPORT.md`); real-hardware data pending |
 
+## Release readiness
+
+See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for the current acceptance gates, measured limitations, and the distinction between software verification and hardware-dependent validation. The project is an academic software prototype and is not certified safety equipment.
+
 ## Setup (Windows PowerShell)
 Use Python 3.10 for the project environment. The current packaging review passed compilation and 13 focused decision-engine tests; the complete test suite must be rerun after this release change in an environment with the project requirements installed.
 ```powershell
