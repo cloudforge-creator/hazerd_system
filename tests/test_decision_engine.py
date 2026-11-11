@@ -94,6 +94,16 @@ def test_single_gas_spike_does_not_issue_relay_shutdown():
     assert "RELAY_SHUTDOWN" not in recovered.actions
 
 
+def test_single_gas_critical_spike_cannot_corroborate_cnn_shutdown():
+    d = DecisionEngine().decide(
+        reading(0, gas=700),
+        Signals(fire_prob=0.95),
+    )
+    assert d.level != Level.CRITICAL
+    assert "cnn_fire_corroborated_override" not in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
 def test_interrupted_gas_critical_sequence_does_not_confirm():
     eng = DecisionEngine()
     sequence = [700, 700, 180, 700, 700]
