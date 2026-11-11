@@ -133,7 +133,7 @@ class AsyncNotifier:
             self.stats["dropped"] += 1
 
     def _run(self) -> None:
-        while not self._stop.is_set():
+        while not self._stop.is_set() or not self.q.empty():
             try:
                 subject, body = self.q.get(timeout=0.2)
             except queue.Empty:
