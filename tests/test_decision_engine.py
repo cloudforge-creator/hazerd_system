@@ -79,7 +79,8 @@ def test_ai_can_raise_but_never_lower_a_rule_alarm():
     d = eng.decide(reading(0, gas=700), Signals(gas_risk=0.0))
     assert d.level == Level.CRITICAL
     d2 = DecisionEngine().decide(reading(0, gas=180), Signals(gas_risk=0.9))
-    assert d2.level == Level.CRITICAL
+    assert d2.level == Level.WARNING
+    assert "RELAY_SHUTDOWN" not in d2.actions
 
 
 def test_corroboration_raises_score():
@@ -169,3 +170,14 @@ def test_weighted_model_ensemble_never_causes_critical_by_itself():
 def test_weighted_model_ensemble_renormalizes_when_models_are_missing():
     d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.4))
     assert d.ml_score == pytest.approx(0.4)
+
+
+def test_lstm_cannot_physically_corroborate_cnn_or_trigger_shutdown():
+    d = DecisionEngine().decide(
+        reading(0, gas=180, temp=25.0),
+        Signals(fire_prob=0.99, temp_anomaly=1.0),
+    )
+    assert d.level == Level.WARNING
+    assert "cnn_fire_unconfirmed_warning" in d.reasons
+    assert "cnn_fire_corroborated_override" not in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions

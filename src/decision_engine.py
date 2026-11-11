@@ -150,16 +150,15 @@ class DecisionEngine:
         # AI may raise rule scores, but it never lowers rule-based evidence; individual
         # model signals remain subject to the validation and corroboration guards below.
         physical_gas, physical_temp = gas, temp
-        if signals.gas_risk is not None:
-            gas = max(gas, _clip01(signals.gas_risk))
-        if signals.temp_anomaly is not None:
-            temp = max(temp, _clip01(signals.temp_anomaly))
+        # AI estimates are fused through the weighted ensemble below. Keep these
+        # physical-rule channels unchanged so an AI score cannot masquerade as
+        # independent sensor corroboration.
         if signals.fire_prob is not None:
             fire_probability = _clip01(signals.fire_prob)
             # The CNN has not yet passed in-domain false-alarm validation. Treat
             # visual evidence as a WARNING-level signal on its own. A CRITICAL
             # override is allowed only when a separate physical sensor corroborates it.
-            sensor_corroboration = _cnn_corroborated(reading, gas, temp)
+            sensor_corroboration = _cnn_corroborated(reading, physical_gas, physical_temp)
             fire = fire_probability if sensor_corroboration else min(
                 fire_probability, _cnn_solo_cap()
             )
@@ -169,16 +168,12 @@ class DecisionEngine:
         # The state model reuses the same sensor inputs; it is not an independent
         # safety channel. Its severity cannot cause CRITICAL without a physical
         # sensor rule independently reaching CRITICAL.
-        physical_critical = (
-            physical_gas >= config.CRITICAL_THRESHOLD
-            or physical_temp >= config.CRITICAL_THRESHOLD
-            or (_usable(reading, "flame") and reading.flame == 1)
-        )
         # Weighted CNN/RF/LSTM ensemble. Missing or invalid model outputs are omitted
         # and the remaining weights are renormalized; absent models never count as zero.
         model_values = {
             "cnn": fire_probability,
-            "rf": _clip01(signals.ml_hazard) if signals.ml_hazard is not None else None,
+            "rf": (_clip01(signals.ml_hazard) if signals.ml_hazard is not None else
+                   (_clip01(signals.gas_risk) if signals.gas_risk is not None else None)),
             "lstm": _clip01(signals.temp_anomaly) if signals.temp_anomaly is not None else None,
         }
         active_models = [(config.MODEL_WEIGHTS[name], value) for name, value in model_values.items()
@@ -215,7 +210,7 @@ class DecisionEngine:
         if _usable(reading, "flame") and reading.flame == 1:
             fused = 1.0
             reasons.append("flame_sensor_override")
-        sensor_corroboration = _cnn_corroborated(reading, gas, temp)
+        sensor_corroboration = _cnn_corroborated(reading, physical_gas, physical_temp)
         if (fire_probability is not None
                 and fire_probability >= config.FIRE_PROB_OVERRIDE
                 and sensor_corroboration):
