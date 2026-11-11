@@ -98,6 +98,7 @@ class SerialSensorReader:
         self.ser = serial.Serial(port, baud, timeout=timeout)
         time.sleep(2.0)
         self.ser.reset_input_buffer()
+        self.send("HEARTBEAT")  # arm the firmware watchdog before system startup sends RELAY:1
 
     def read(self) -> Reading:
         raw = self.ser.readline().decode("ascii", errors="ignore")
