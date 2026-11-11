@@ -69,9 +69,38 @@ def test_ml_state_model_alone_cannot_trigger_critical_shutdown():
     assert "RELAY_SHUTDOWN" not in d.actions
 
 
-def test_ml_state_model_preserves_physical_critical_detection():
-    d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.0))
-    assert d.level == Level.CRITICAL
+def test_ml_state_model_preserves_sustained_physical_gas_critical_detection():
+    eng = DecisionEngine()
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700), Signals(ml_hazard=0.0))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[0].level != Level.CRITICAL
+    assert decisions[-1].level == Level.CRITICAL
+    assert "RELAY_SHUTDOWN" in decisions[-1].actions
+
+
+def test_single_gas_spike_does_not_issue_relay_shutdown():
+    eng = DecisionEngine()
+    spike = eng.decide(reading(0, gas=700))
+    assert spike.level == Level.WARNING
+    assert "gas_critical_pending_confirmation" in spike.reasons
+    assert "RELAY_SHUTDOWN" not in spike.actions
+
+    recovered = eng.decide(reading(config.CYCLE_SECONDS, gas=180))
+    assert recovered.level != Level.CRITICAL
+    assert "RELAY_SHUTDOWN" not in recovered.actions
+
+
+def test_interrupted_gas_critical_sequence_does_not_confirm():
+    eng = DecisionEngine()
+    sequence = [700, 700, 180, 700, 700]
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=value))
+        for i, value in enumerate(sequence)
+    ]
+    assert all("RELAY_SHUTDOWN" not in d.actions for d in decisions)
+    assert eng._gas_critical_consec == 2
 
 
 def test_ai_can_raise_but_never_lower_a_rule_alarm():
