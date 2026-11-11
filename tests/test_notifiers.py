@@ -142,3 +142,20 @@ def test_config_loading_uses_env_secrets_and_reports_problems(tmp_path):
     assert load_notifiers(str(tmp_path / "missing.json"))[0] is None
     (tmp_path / "bad.json").write_text("{nope")
     assert load_notifiers(str(tmp_path / "bad.json"))[0] is None
+
+
+def test_async_notifier_stop_drains_pending_messages():
+    delivered = []
+
+    class Recorder:
+        def send(self, subject, body):
+            time.sleep(0.02)
+            delivered.append(subject)
+            return 1
+
+    notifier = AsyncNotifier(Recorder(), retries=0)
+    for i in range(5):
+        notifier.send(f"message-{i}", "body")
+    assert notifier.stop(timeout=2.0)
+    assert delivered == [f"message-{i}" for i in range(5)]
+    assert notifier.q.unfinished_tasks == 0
