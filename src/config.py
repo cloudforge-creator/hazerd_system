@@ -52,6 +52,7 @@ PRUNE_EVERY_S = 3600
 # ---------------------------------------------------------------------------
 MODEL_DIR = "models"
 ML_LEVEL_SCORES = {0: 0.0, 1: 0.55, 2: 0.85}   # SAFE / WARNING / CRITICAL -> risk score
+ML_SOLO_MAX_SCORE = 0.69                     # ML state model alone cannot command a CRITICAL shutdown
 ML_EARLY_CONSEC = 2                             # consecutive steps above threshold -> alarm
 
 # ---------------------------------------------------------------------------
