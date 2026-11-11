@@ -150,6 +150,11 @@ class DecisionEngine:
         # AI may raise rule scores, but it never lowers rule-based evidence; individual
         # model signals remain subject to the validation and corroboration guards below.
         physical_gas, physical_temp = gas, temp
+        physical_critical = (
+            physical_gas >= config.CRITICAL_THRESHOLD
+            or physical_temp >= config.CRITICAL_THRESHOLD
+            or (_usable(reading, "flame") and reading.flame == 1)
+        )
         # AI estimates are fused through the weighted ensemble below. Keep these
         # physical-rule channels unchanged so an AI score cannot masquerade as
         # independent sensor corroboration.
