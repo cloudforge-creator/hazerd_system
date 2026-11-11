@@ -149,6 +149,7 @@ class DecisionEngine:
 
         # AI may raise rule scores, but it never lowers rule-based evidence; individual
         # model signals remain subject to the validation and corroboration guards below.
+        physical_gas, physical_temp = gas, temp
         if signals.gas_risk is not None:
             gas = max(gas, _clip01(signals.gas_risk))
         if signals.temp_anomaly is not None:
@@ -165,7 +166,19 @@ class DecisionEngine:
             if fire_probability >= config.FIRE_PROB_OVERRIDE and not sensor_corroboration:
                 reasons.append("cnn_fire_unconfirmed_warning")
 
-        ml = _clip01(signals.ml_hazard) if signals.ml_hazard is not None else 0.0
+        # The state model reuses the same sensor inputs; it is not an independent
+        # safety channel. Its severity cannot cause CRITICAL without a physical
+        # sensor rule independently reaching CRITICAL.
+        physical_critical = (
+            physical_gas >= config.CRITICAL_THRESHOLD
+            or physical_temp >= config.CRITICAL_THRESHOLD
+            or (_usable(reading, "flame") and reading.flame == 1)
+        )
+        ml_raw = _clip01(signals.ml_hazard) if signals.ml_hazard is not None else 0.0
+        ml_cap = min(config.ML_SOLO_MAX_SCORE, config.CRITICAL_THRESHOLD - 0.01)
+        ml = ml_raw if physical_critical else min(ml_raw, ml_cap)
+        if ml_raw >= config.CRITICAL_THRESHOLD and not physical_critical:
+            reasons.append("ml_critical_unconfirmed_warning")
         scores = {"gas": gas, "temp": temp, "fire": fire}
         # ML counts toward the base score but NOT toward corroboration (it re-reads the
         # same physical signals, so it must not double-count as independent evidence).
