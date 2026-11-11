@@ -33,3 +33,19 @@ jobs:
 
       - name: Run test suite
         run: python -m pytest -q
+
+  firmware-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install Arduino AVR core and DHT dependencies
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install "DHT sensor library"
+          arduino-cli lib install "Adafruit Unified Sensor"
+
+      - name: Compile Arduino Uno sensor firmware
+        run: arduino-cli compile --fqbn arduino:avr:uno arduino/hazard_sensors
