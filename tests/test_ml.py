@@ -122,11 +122,17 @@ def test_end_to_end_hazards_still_shut_down_with_ml(trained, scenario, seconds):
 
 
 # ---------- engine + ML signals ----------
-def test_ml_hazard_can_raise_but_not_lower():
+def test_ml_hazard_alone_is_capped_below_critical():
     d = DecisionEngine().decide(reading(0, gas=180), Signals(ml_hazard=0.85))
-    assert d.level == Level.CRITICAL and d.ml_score == 0.85
-    d2 = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.0))
-    assert d2.level == Level.CRITICAL
+    assert d.level == Level.WARNING
+    assert d.ml_score == pytest.approx(0.69)
+    assert "ml_critical_unconfirmed_warning" in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_ml_hazard_does_not_lower_physical_critical_evidence():
+    d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.0))
+    assert d.level == Level.CRITICAL
 
 
 def test_ml_does_not_count_as_corroboration():
