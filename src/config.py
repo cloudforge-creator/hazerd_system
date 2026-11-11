@@ -55,6 +55,7 @@ MODEL_WEIGHTS = {"cnn": 0.50, "rf": 0.25, "lstm": 0.25}
 ML_LEVEL_SCORES = {0: 0.0, 1: 0.55, 2: 0.85}   # SAFE / WARNING / CRITICAL -> risk score
 ML_SOLO_MAX_SCORE = 0.69                     # ML ensemble alone cannot command a CRITICAL shutdown
 ML_EARLY_CONSEC = 2                             # consecutive steps above threshold -> alarm
+TREND_EARLY_CONSEC = 2                          # consecutive predictive-trend cycles -> early warning
 
 # ---------------------------------------------------------------------------
 # Personnel recognition / camera (all editable live from the dashboard unless noted)
