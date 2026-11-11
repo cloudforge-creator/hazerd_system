@@ -105,8 +105,13 @@ def test_interrupted_gas_critical_sequence_does_not_confirm():
 
 def test_ai_can_raise_but_never_lower_a_rule_alarm():
     eng = DecisionEngine()
-    d = eng.decide(reading(0, gas=700), Signals(gas_risk=0.0))
-    assert d.level == Level.CRITICAL
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700), Signals(gas_risk=0.0))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[-1].level == Level.CRITICAL
+    assert "RELAY_SHUTDOWN" in decisions[-1].actions
+
     d2 = DecisionEngine().decide(reading(0, gas=180), Signals(gas_risk=0.9))
     assert d2.level == Level.WARNING
     assert "RELAY_SHUTDOWN" not in d2.actions
@@ -120,8 +125,11 @@ def test_corroboration_raises_score():
 
 def test_hysteresis_requires_calm_cycles_to_deescalate():
     eng = DecisionEngine()
-    eng.decide(reading(0, gas=700))
-    levels = [eng.decide(reading(1 + i, gas=180)).level
+    for i in range(config.GAS_CRITICAL_CONSEC):
+        initial = eng.decide(reading(i * config.CYCLE_SECONDS, gas=700))
+    assert initial.level == Level.CRITICAL
+
+    levels = [eng.decide(reading(2 + i, gas=180)).level
               for i in range(config.CLEAR_CYCLES + 1)]
     assert levels[0] == Level.CRITICAL
     assert levels[config.CLEAR_CYCLES - 2] == Level.CRITICAL
@@ -145,8 +153,13 @@ def test_persistent_fault_raises_warning():
 
 
 def test_usable_sensors_still_protect_when_another_is_faulty():
-    d = DecisionEngine().decide(reading(0, gas=700, temp=None, faults=["temperature:missing"]))
-    assert d.level == Level.CRITICAL and d.degraded
+    eng = DecisionEngine()
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700, temp=None,
+                           faults=["temperature:missing"]))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[-1].level == Level.CRITICAL and decisions[-1].degraded
 
 
 def test_cnn_guard_cannot_be_bypassed_by_lowering_the_critical_threshold(monkeypatch):
