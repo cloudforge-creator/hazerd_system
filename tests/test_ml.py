@@ -130,9 +130,14 @@ def test_ml_hazard_alone_is_capped_below_critical():
     assert "RELAY_SHUTDOWN" not in d.actions
 
 
-def test_ml_hazard_does_not_lower_physical_critical_evidence():
-    d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.0))
-    assert d.level == Level.CRITICAL
+def test_ml_hazard_does_not_lower_sustained_physical_critical_evidence():
+    eng = DecisionEngine()
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700), Signals(ml_hazard=0.0))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[-1].level == Level.CRITICAL
+    assert "RELAY_SHUTDOWN" in decisions[-1].actions
 
 
 def test_ml_does_not_count_as_corroboration():
