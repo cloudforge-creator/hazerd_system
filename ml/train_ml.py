@@ -151,16 +151,37 @@ def main(runs_n=700, seed=42, out="models", quiet=False):
                                                  class_weight="balanced", random_state=seed)
     early_model.fit(Xtr[vtr], ye_tr[vtr])
 
-    # threshold chosen on VALIDATION only
-    p_va = early_model.predict_proba(Xva[vva])[:, 1]
-    best_f1, tau = -1.0, 0.5
-    for cand in np.arange(0.10, 0.95, 0.05):
-        f = f1_score(ye_va[vva], p_va >= cand, zero_division=0)
-        if f > best_f1:
-            best_f1, tau = f, float(round(cand, 2))
+    # Select the early-warning threshold on VALIDATION RUNS using event-level
+    # C2 objectives, not window-level F1. A threshold that fires repeatedly in
+    # one clean run is costly even if its window F1 looks good.
+    validation_candidates = []
+    for cand in np.arange(0.10, 0.951, 0.025):
+        alarms = []
+        for run in parts["val"]:
+            X, _, _, _, end = run_features(run)
+            flags = early_model.predict_proba(X)[:, 1] >= cand
+            a = first_alarm(consecutive(flags, config.ML_EARLY_CONSEC))
+            alarms.append(None if a is None else int(end[a]))
+        report = event_report(parts["val"], alarms)
+        feasible = (report["detection_rate"] >= 0.90
+                    and report["false_alarm_run_rate"] <= 0.10)
+        shortfall = max(0.0, 0.90 - report["detection_rate"]) + max(
+            0.0, report["false_alarm_run_rate"] - 0.10
+        )
+        key = (int(feasible), -shortfall, report["detection_rate"],
+               -report["false_alarm_run_rate"],
+               report["median_lead_s"] if report["median_lead_s"] is not None else -1.0)
+        validation_candidates.append((key, float(round(cand, 3)), report))
+    _, tau, selected_validation = max(validation_candidates, key=lambda item: item[0])
 
     # ---- test: window level ----
-    metrics = {"splits": sizes}
+    metrics = {"splits": sizes,
+               "early_threshold_selection_validation": {
+                   "threshold": tau,
+                   "detection_target_met": selected_validation["detection_rate"] >= 0.90,
+                   "false_alarm_target_met": selected_validation["false_alarm_run_rate"] <= 0.10,
+                   "event_report": selected_validation,
+               }}
     metrics["ml_state_test"] = state_report(ys_te, state_model.predict(Xte))
 
     base_levels = [baseline_trace(r) for r in parts["test"]]
