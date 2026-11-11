@@ -174,10 +174,23 @@ class DecisionEngine:
             or physical_temp >= config.CRITICAL_THRESHOLD
             or (_usable(reading, "flame") and reading.flame == 1)
         )
-        ml_raw = _clip01(signals.ml_hazard) if signals.ml_hazard is not None else 0.0
+        # Weighted CNN/RF/LSTM ensemble. Missing or invalid model outputs are omitted
+        # and the remaining weights are renormalized; absent models never count as zero.
+        model_values = {
+            "cnn": fire_probability,
+            "rf": _clip01(signals.ml_hazard) if signals.ml_hazard is not None else None,
+            "lstm": _clip01(signals.temp_anomaly) if signals.temp_anomaly is not None else None,
+        }
+        active_models = [(config.MODEL_WEIGHTS[name], value) for name, value in model_values.items()
+                         if value is not None and config.MODEL_WEIGHTS.get(name, 0.0) > 0.0]
+        weight_total = sum(weight for weight, _ in active_models)
+        model_raw = (sum(weight * value for weight, value in active_models) / weight_total
+                     if weight_total > 0 else 0.0)
         ml_cap = min(config.ML_SOLO_MAX_SCORE, config.CRITICAL_THRESHOLD - 0.01)
-        ml = ml_raw if physical_critical else min(ml_raw, ml_cap)
-        if ml_raw >= config.CRITICAL_THRESHOLD and not physical_critical:
+        # These model outputs are not independent safety channels. Their weighted
+        # ensemble may raise WARNING, but cannot cause CRITICAL without physical evidence.
+        ml = model_raw if physical_critical else min(model_raw, ml_cap)
+        if model_raw >= config.CRITICAL_THRESHOLD and not physical_critical:
             reasons.append("ml_critical_unconfirmed_warning")
         scores = {"gas": gas, "temp": temp, "fire": fire}
         # ML counts toward the base score but NOT toward corroboration (it re-reads the

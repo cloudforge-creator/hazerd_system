@@ -13,8 +13,6 @@ VALID_RANGES = {
     "flame": (0, 1),
 }
 
-LOG_PATH = "data/logs/sensor_log.csv"
-
 # ---------------------------------------------------------------------------
 # M3 decision logic. Rule-based scoring is the SAFETY FLOOR: AI scores may raise
 # a score but never lower it. Calibrate these on real hardware later.
@@ -51,8 +49,11 @@ PRUNE_EVERY_S = 3600
 # ML integration (Phase M2)
 # ---------------------------------------------------------------------------
 MODEL_DIR = "models"
+# Runtime model ensemble: CNN / Random Forest / temperature LSTM.
+# Weights are normalized and applied only to available, valid model outputs.
+MODEL_WEIGHTS = {"cnn": 0.50, "rf": 0.25, "lstm": 0.25}
 ML_LEVEL_SCORES = {0: 0.0, 1: 0.55, 2: 0.85}   # SAFE / WARNING / CRITICAL -> risk score
-ML_SOLO_MAX_SCORE = 0.69                     # ML state model alone cannot command a CRITICAL shutdown
+ML_SOLO_MAX_SCORE = 0.69                     # ML ensemble alone cannot command a CRITICAL shutdown
 ML_EARLY_CONSEC = 2                             # consecutive steps above threshold -> alarm
 
 # ---------------------------------------------------------------------------

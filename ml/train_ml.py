@@ -16,7 +16,7 @@ import platform
 import joblib
 import numpy as np
 import sklearn
-from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_recall_fscore_support
 
 from ml.synth import DT, SCENARIOS, generate_runs
@@ -144,7 +144,11 @@ def main(runs_n=700, seed=42, out="models", quiet=False):
     Xva, ys_va, ye_va, vva = stack(parts["val"])
     Xte, ys_te, ye_te, vte = stack(parts["test"])
 
-    state_model = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.1, random_state=seed)
+    # The weighted runtime ensemble's RF slot is a real Random Forest model.
+    state_model = RandomForestClassifier(
+        n_estimators=300, min_samples_leaf=2, max_features="sqrt",
+        class_weight="balanced_subsample", n_jobs=-1, random_state=seed,
+    )
     state_model.fit(Xtr, ys_tr)
 
     early_model = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.1,

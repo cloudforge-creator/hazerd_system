@@ -12,6 +12,9 @@ The reliability changes are in PR #1. The follow-up branch release/software-read
 
 ## Changes made in this release-readiness branch
 
+- Runtime model ensemble weights are explicitly set to CNN 0.50, Random Forest 0.25, and temperature LSTM 0.25. Available model outputs are renormalized when a model is disabled or unavailable. The state classifier used for the RF slot is trained as a Random Forest.
+- The weighted AI ensemble remains advisory: it can raise WARNING, but cannot cause CRITICAL shutdown without independent physical sensor evidence.
+
 - The state classifier uses the same sensor-derived features as the physical rules. It is therefore not independent evidence. Its score is capped below CRITICAL unless a physical gas, temperature, or flame rule independently reaches CRITICAL.
 - The early-warning model threshold is selected using run/event-level validation metrics (detection rate and false-alarm run rate), rather than window-level F1 alone.
 - The validation report records whether both C2 acceptance targets were achieved. If no candidate threshold satisfies both, the unmet target remains visible.
@@ -34,6 +37,12 @@ The following are the fresh results from the successful PR workflow on commit `c
 | C5 projected Python heap growth | 0.97 MB/day | Passes synthetic CI budget; tracemalloc excludes SQLite C allocations |
 
 ## Model-specific release gates
+
+### Weighted CNN / RF / LSTM ensemble
+- CNN weight: 0.50; Random Forest weight: 0.25; temperature LSTM weight: 0.25.
+- Weights apply to available model outputs and are renormalized if a model is disabled or unavailable.
+- These outputs are not independent physical safety channels; the ensemble cannot independently trigger CRITICAL shutdown.
+- The temperature LSTM remains disabled unless trained on this device at the configured sampling interval.
 
 ### Early-warning model
 - Train/validation/test runs remain separated by scenario run.

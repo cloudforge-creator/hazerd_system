@@ -1,3 +1,5 @@
+import pytest
+
 from src import config
 from src.decision_engine import DecisionEngine, Level, Signals
 from src.simulator import SimulatedSensorReader
@@ -139,3 +141,31 @@ def test_cnn_critical_still_works_with_a_real_gas_rise_even_if_thresholds_are_ed
 def test_flame_sensor_override_is_unaffected_by_the_cnn_guard():
     d = DecisionEngine().decide(reading(0, flame=1), Signals(fire_prob=0.0))
     assert d.level == Level.CRITICAL and "flame_sensor_override" in d.reasons
+
+
+def test_model_ensemble_weights_are_cnn_rf_lstm_50_25_25():
+    assert config.MODEL_WEIGHTS == {"cnn": 0.50, "rf": 0.25, "lstm": 0.25}
+    assert sum(config.MODEL_WEIGHTS.values()) == 1.0
+
+
+def test_weighted_model_ensemble_uses_available_scores_and_normalizes():
+    d = DecisionEngine().decide(
+        reading(0, gas=700),
+        Signals(fire_prob=0.8, ml_hazard=0.4, temp_anomaly=0.2),
+    )
+    assert d.ml_score == pytest.approx(0.55)
+
+
+def test_weighted_model_ensemble_never_causes_critical_by_itself():
+    d = DecisionEngine().decide(
+        reading(0),
+        Signals(fire_prob=1.0, ml_hazard=1.0, temp_anomaly=1.0),
+    )
+    assert d.level == Level.WARNING
+    assert d.ml_score < config.CRITICAL_THRESHOLD
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_weighted_model_ensemble_renormalizes_when_models_are_missing():
+    d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.4))
+    assert d.ml_score == pytest.approx(0.4)
