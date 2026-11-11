@@ -106,7 +106,7 @@ class PersonnelMonitor(threading.Thread):
         t0 = time.time()
         self._last_frame_at = self.clock()
         self._camera_stale = False
-        h, w = frame.shape[:2}
+        h, w = frame.shape[:2]
         dets = []
         for d in self.engine.detect_and_embed(frame):
             small = d.box[2] < config.FACE_MIN_SIZE_PX or d.embedding is None
