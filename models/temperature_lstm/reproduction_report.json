@@ -1,0 +1,68 @@
+{
+    "verification_type": "independent_event_based_reproduction",
+    "model_version": "1.0.1-event-based",
+    "dataset": "NAB machine_temperature_system_failure.csv",
+    "sampling_interval": "5 minutes",
+    "threshold": 0.0506867678281483,
+    "official_anomaly_window_counts": [
+        567,
+        567,
+        567,
+        567
+    ],
+    "saved_evaluation": {
+        "evaluation_type": "event_based_test",
+        "accuracy": 0.9563961882760612,
+        "anomaly_precision": 0.8443708609271523,
+        "anomaly_recall": 0.8994708994708994,
+        "anomaly_f1": 0.8710503842869343,
+        "roc_auc": 0.9551439923217087,
+        "confusion_matrix": [
+            [
+                2802,
+                94
+            ],
+            [
+                57,
+                510
+            ]
+        ],
+        "test_readings": 3463,
+        "normal_readings": 2896,
+        "anomaly_readings": 567,
+        "correctly_detected_anomalies": 510,
+        "missed_anomalies": 57,
+        "false_alarms": 94
+    },
+    "reproduced_evaluation": {
+        "accuracy": 0.9563961882760612,
+        "anomaly_precision": 0.8443708609271523,
+        "anomaly_recall": 0.8994708994708994,
+        "anomaly_f1": 0.8710503842869343,
+        "roc_auc": 0.9551439923217088,
+        "confusion_matrix": [
+            [
+                2802,
+                94
+            ],
+            [
+                57,
+                510
+            ]
+        ],
+        "test_readings": 3463,
+        "normal_readings": 2896,
+        "anomaly_readings": 567,
+        "correctly_detected_anomalies": 510,
+        "missed_anomalies": 57,
+        "false_alarms": 94
+    },
+    "mismatches": [],
+    "all_metrics_match": true,
+    "limitations": [
+        "Threshold calibration overlaps training history.",
+        "Only one complete anomaly event is held out for testing.",
+        "NAB telemetry is not calibrated physical sensor data.",
+        "This research model is not integrated into the live 0.5-second sensor pipeline."
+    ]
+}

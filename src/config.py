@@ -43,6 +43,7 @@ FORECAST_MIN_SLOPE = 0.01     # score units per second
 # M4 response
 NOTIFY_COOLDOWN_S = 30.0
 DB_PATH = "data/hazard.db"
+LOG_PATH = "data/logs/sensor_log.csv"
 READINGS_KEEP_ROWS = 2_419_200   # 14 days at 2 readings/s; older sensor_readings rows are pruned
 PRUNE_EVERY_S = 3600
 

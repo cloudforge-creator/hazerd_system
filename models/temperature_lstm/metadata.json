@@ -1,0 +1,62 @@
+{
+    "model_name": "Temperature LSTM Anomaly Detector",
+    "version": "1.0.1-event-based",
+    "created_utc": "2026-11-12T15:51:40.726484+00:00",
+    "framework": "TensorFlow/Keras",
+    "model_file": "temperature_lstm.keras",
+    "scaler_file": "temperature_scaler.joblib",
+    "evaluation_file": "evaluation.json",
+    "dataset": "NAB machine_temperature_system_failure.csv",
+    "dataset_type": "Industrial machine temperature telemetry",
+    "feature": "value",
+    "target": "next_temperature_value",
+    "lookback": 50,
+    "sampling_interval": "5 minutes",
+    "threshold": 0.0506867678281483,
+    "threshold_units": "minmax_scaled_absolute_prediction_error",
+    "anomaly_rule": "abs(actual_scaled - predicted_scaled) >= threshold",
+    "scaler": {
+        "type": "MinMaxScaler",
+        "feature_range": [
+            0,
+            1
+        ],
+        "fit_on": "normal_training_readings_only",
+        "data_min": [
+            51.33484803
+        ],
+        "data_max": [
+            108.5105428
+        ]
+    },
+    "training_rows": 15878,
+    "threshold_calibration_rows": 19220,
+    "threshold_calibration_includes_training_data": true,
+    "threshold_calibration_overlapping_training_rows": 15878,
+    "threshold_calibration_rows_after_training": 3342,
+    "test_rows": 3463,
+    "training_period": {
+        "start": "2013-12-02 21:15:00",
+        "end": "2014-01-27 00:20:00"
+    },
+    "threshold_calibration_period": {
+        "start": "2013-12-02 21:15:00",
+        "end": "2014-02-07 14:50:00"
+    },
+    "test_period": {
+        "start": "2014-02-07 14:55:00",
+        "end": "2014-02-19 15:25:00"
+    },
+    "test_anomaly_windows": 1,
+    "test_anomaly_readings": 567,
+    "input_shape": "(None, 50, 1)",
+    "output_shape": "(None, 1)",
+    "limitations": [
+        "NAB machine telemetry is not calibrated physical sensor data.",
+        "Threshold calibration history includes training data and is not an independent validation set.",
+        "Only one complete anomaly event was held out for final testing.",
+        "Hardware validation is still required.",
+        "This research model must not be directly used on the 0.5-second live sensor stream.",
+        "This model is not a certified fire safety device."
+    ]
+}
