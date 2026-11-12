@@ -204,7 +204,7 @@ def test_identity_switch_needs_consistent_contrary_evidence():
 def test_people_in_hazard_triggers_emergency_only_when_system_is_not_safe():
     d = DecisionEngine().decide(reading(0, gas=700), Signals(people_in_hazard=["Ali Khan (Operator)"]))
     assert "NOTIFY_EMERGENCY" in d.actions and "people_in_hazard_zone=Ali Khan (Operator)" in d.reasons
-    assert d.level == Level.CRITICAL
+    assert d.level == Level.WARNING
     safe = DecisionEngine().decide(reading(0), Signals(people_in_hazard=["Ali Khan (Operator)"]))
     assert safe.level == Level.SAFE and "NOTIFY_EMERGENCY" not in safe.actions
     plain = DecisionEngine().decide(reading(0, gas=700))

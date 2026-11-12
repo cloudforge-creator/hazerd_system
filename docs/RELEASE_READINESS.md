@@ -1,6 +1,6 @@
-# Software release readiness
+﻿# Software release readiness
 
-Last reviewed: 2026-11-11
+Last reviewed: 2026-11-12
 
 ## Scope and release status
 
@@ -8,7 +8,7 @@ This checklist covers repository software only. It does not certify a physical i
 
 The reliability changes are in PR #1. The follow-up branch release/software-readiness adds a conservative guard against ML-state-only CRITICAL shutdowns, event-level validation for early-warning threshold selection, and a firmware compile check in CI.
 
-**Status: not yet release-ready.** Latest PR CI passed, including Python tests, Arduino Uno source compilation, and a fresh C1-C5 run. The fresh evaluation still fails the C2 false-alarm acceptance target, so release acceptance remains blocked.
+**Status: not yet release-ready.** A previous PR CI run passed Python tests, Arduino Uno source compilation, and a C1-C5 evaluation. Current local verification also passes all 170 Python tests. C2 still fails its false-alarm acceptance target, so release acceptance remains blocked. CI must be rerun against the updated commit.
 
 ## Changes made in this release-readiness branch
 
@@ -22,19 +22,19 @@ The reliability changes are in PR #1. The follow-up branch release/software-read
 
 ## Existing evidence and outstanding gaps
 
-The following are the fresh results from the successful PR workflow on commit `cb09e49867349325d48e044416548346e460ef0f`, generated 2026-11-11. C1/C2/C4 are synthetic scenario results, not field validation.
+The following are the results from the current verification cycle, generated 2026-11-12. C1/C2/C4 are synthetic scenario results, not field validation. The evaluation is software-only and is not evidence of real-world hazard accuracy.
 
 | Area | Last recorded result | Remaining acceptance work |
 |---|---:|---|
-| C1 macro-F1, rule + ML | 0.905 | Passes >= 0.90; WARNING-class F1 remains 0.7469 |
-| C2 early detection, rule + ML | 0.9685 | Passes >= 0.90 on synthetic held-out runs |
-| C2 false-alarm runs, rule + ML | 0.1685 | FAILS <= 0.10; 46/273 clean runs false-alarmed |
+| C1 macro-F1, rule + ML | 0.9082 | Passes >= 0.90; WARNING-class F1 remains 0.7534 |
+| C2 early detection, rule + ML | 0.9764 | Passes >= 0.90 on synthetic held-out runs |
+| C2 false-alarm runs, rule + ML | 0.1795 | FAILS <= 0.10; 49/273 clean runs false-alarmed |
 | C4 gas-leak clean false shutdowns | 7/11 | Subset issue persists; investigate gas cross-sensitivity and near-critical plateaus |
 | CNN fire precision / recall / F1 | 0.8704 / 0.8919 / 0.8810 | New candidate must reach recall >= 0.92 and F1 >= 0.90 on untouched test data |
 | Gas UCI cross-batch macro-F1 | 0.4711 (batches 6-10) | Improve drift robustness; UCI 128-feature array is not the runtime single-channel MQ-2 |
 | Temperature LSTM point F1 / recall | 0.0219 / 0.0115 | Research result only; no demonstrated advantage over persistence / rolling-z baselines |
-| C3 p99 full-cycle latency (rule + ML) | 24.577 ms | Passes synthetic CI budget; measure on deployment hardware |
-| C5 projected Python heap growth | 0.97 MB/day | Passes synthetic CI budget; tracemalloc excludes SQLite C allocations |
+| C3 p99 full-cycle latency (rule + ML) | 31.929 ms | Passes synthetic CI budget; measure on deployment hardware |
+| C5 projected Python heap growth | 1.03 MB/day | Passes synthetic CI budget; tracemalloc excludes SQLite C allocations |
 
 ## Model-specific release gates
 
@@ -67,11 +67,11 @@ The following are the fresh results from the successful PR workflow on commit `c
 ## Software verification checklist
 
 - [ ] PR #1 reviewed and merged.
-- [ ] This branch's Python test job passes.
-- [ ] This branch's Arduino Uno compile job passes.
-- [x] Full C1-C5 evaluation rerun after the decision-engine change (synthetic CI run).
-- [ ] C2 detection >= 0.90 AND false-alarm run rate <= 0.10 on held-out runs (detection passes; false-alarm rate currently 0.1685).
-- [ ] C4 gas-leak false shutdown behavior reviewed and accepted on a sufficiently representative clean set.
+- [x] Python test suite passes: 170 passed.
+- [x] Arduino Uno firmware source compilation passes locally.
+- [x] Full C1-C5 evaluation rerun after the decision-engine change; current verified result is complete and software-only.
+- [ ] C2 detection >= 0.90 AND false-alarm run rate <= 0.10 on held-out runs (detection passes at 0.9764; false-alarm rate remains 0.1795, so C2 is parked and acceptance is not achieved).
+- [ ] C4 gas-leak false shutdown behavior reviewed and accepted on a sufficiently representative clean set. Current software evaluation records false-shutdown commands in 7 of 11 clean runs in the gas-leak scenario; physical relay actuation remains unvalidated.
 - [ ] CNN candidate meets its test targets, or remains explicitly below target and guarded.
 - [ ] Gas model drift limitation remains explicit; runtime MQ-2 model validated separately.
 - [ ] C3/C5 measured again on the documented release machine.
