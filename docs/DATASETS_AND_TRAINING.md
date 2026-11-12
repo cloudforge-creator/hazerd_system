@@ -9,7 +9,7 @@ Raw data stays out of Git. All commands run from the project folder in PowerShel
 | Fire CNN (MobileNetV2), trained on D-Fire on Colab | `models/fire_cnn.keras`, `models/fire_cnn_meta.json`, `models/fire_cnn_weights.npz`, `models/metrics/cnn_metrics.json` | 3-class test accuracy 84.1%, fire-vs-rest F1 0.881, recall 0.892, ROC AUC 0.974 (targets F1 0.90, recall 0.92: **not met**) |
 | Metrics of the other studies (reference only) | `models/metrics/*.json`, `evaluation/results/` | see below; raw datasets and retrainable model files are not all bundled |
 
-The ML hazard-state / early-warning models (`models/hazard_state.joblib`, `models/early_warning.joblib`) are **not** included: scikit-learn model files depend on the library version, so recreate them on the target machine (about 1 minute): `python -m ml.train_ml --runs 700 --seed 42`. Raw UCI, NAB, D-Fire and face datasets are not bundled. The package includes the fire CNN artifact and its reported metrics, not the original training images.
+The ML hazard-state / early-warning models (`models/hazard_state.joblib`, `models/early_warning.joblib`) **are included in this repository**. They are scikit-learn/joblib artifacts and should be loaded with a compatible dependency environment; recreate them with `python -m ml.train_ml --runs 700 --seed 42` only when you intentionally want to regenerate the artifacts. Raw UCI, NAB, D-Fire and face datasets are not bundled. The package includes the fire CNN artifact and its reported metrics, not the original training images.
 
 ## One command for the downloadable datasets
 ```powershell
