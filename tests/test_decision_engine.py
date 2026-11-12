@@ -1,3 +1,5 @@
+import pytest
+
 from src import config
 from src.decision_engine import DecisionEngine, Level, Signals
 from src.simulator import SimulatedSensorReader
@@ -21,7 +23,9 @@ def test_gas_leak_gives_early_warning_then_warning_then_critical():
     i_early = first(lambda d: d.early_warning)
     i_warn = first(lambda d: d.level == Level.WARNING)
     i_crit = first(lambda d: d.level == Level.CRITICAL)
-    assert i_early < i_warn < i_crit
+    # The two-cycle trend debounce can make the early flag coincide with WARNING;
+    # it must still be present before the true CRITICAL state is reached.
+    assert i_early <= i_warn < i_crit
     assert "RELAY_SHUTDOWN" in ds[i_crit].actions
 
 
@@ -59,12 +63,70 @@ def test_cnn_critical_override_requires_independent_sensor_corroboration():
     assert "RELAY_SHUTDOWN" in d.actions
 
 
+def test_ml_state_model_alone_cannot_trigger_critical_shutdown():
+    d = DecisionEngine().decide(reading(0, gas=180), Signals(ml_hazard=0.85))
+    assert d.level == Level.WARNING
+    assert d.ml_score == config.ML_SOLO_MAX_SCORE
+    assert "ml_critical_unconfirmed_warning" in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_ml_state_model_preserves_sustained_physical_gas_critical_detection():
+    eng = DecisionEngine()
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700), Signals(ml_hazard=0.0))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[0].level != Level.CRITICAL
+    assert decisions[-1].level == Level.CRITICAL
+    assert "RELAY_SHUTDOWN" in decisions[-1].actions
+
+
+def test_single_gas_spike_does_not_issue_relay_shutdown():
+    eng = DecisionEngine()
+    spike = eng.decide(reading(0, gas=700))
+    assert spike.level == Level.WARNING
+    assert "gas_critical_pending_confirmation" in spike.reasons
+    assert "RELAY_SHUTDOWN" not in spike.actions
+
+    recovered = eng.decide(reading(config.CYCLE_SECONDS, gas=180))
+    assert recovered.level != Level.CRITICAL
+    assert "RELAY_SHUTDOWN" not in recovered.actions
+
+
+def test_single_gas_critical_spike_cannot_corroborate_cnn_shutdown():
+    d = DecisionEngine().decide(
+        reading(0, gas=700),
+        Signals(fire_prob=0.95),
+    )
+    assert d.level != Level.CRITICAL
+    assert "cnn_fire_corroborated_override" not in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_interrupted_gas_critical_sequence_does_not_confirm():
+    eng = DecisionEngine()
+    sequence = [700, 700, 180, 700, 700]
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=value))
+        for i, value in enumerate(sequence)
+    ]
+    assert all("RELAY_SHUTDOWN" not in d.actions for d in decisions)
+    assert eng._gas_critical_consec == 2
+
+
 def test_ai_can_raise_but_never_lower_a_rule_alarm():
     eng = DecisionEngine()
-    d = eng.decide(reading(0, gas=700), Signals(gas_risk=0.0))
-    assert d.level == Level.CRITICAL
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700), Signals(gas_risk=0.0))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[-1].level == Level.CRITICAL
+    assert "RELAY_SHUTDOWN" in decisions[-1].actions
+
     d2 = DecisionEngine().decide(reading(0, gas=180), Signals(gas_risk=0.9))
-    assert d2.level == Level.CRITICAL
+    assert d2.level == Level.WARNING
+    assert "RELAY_SHUTDOWN" not in d2.actions
 
 
 def test_corroboration_raises_score():
@@ -75,8 +137,11 @@ def test_corroboration_raises_score():
 
 def test_hysteresis_requires_calm_cycles_to_deescalate():
     eng = DecisionEngine()
-    eng.decide(reading(0, gas=700))
-    levels = [eng.decide(reading(1 + i, gas=180)).level
+    for i in range(config.GAS_CRITICAL_CONSEC):
+        initial = eng.decide(reading(i * config.CYCLE_SECONDS, gas=700))
+    assert initial.level == Level.CRITICAL
+
+    levels = [eng.decide(reading(2 + i, gas=180)).level
               for i in range(config.CLEAR_CYCLES + 1)]
     assert levels[0] == Level.CRITICAL
     assert levels[config.CLEAR_CYCLES - 2] == Level.CRITICAL
@@ -100,8 +165,13 @@ def test_persistent_fault_raises_warning():
 
 
 def test_usable_sensors_still_protect_when_another_is_faulty():
-    d = DecisionEngine().decide(reading(0, gas=700, temp=None, faults=["temperature:missing"]))
-    assert d.level == Level.CRITICAL and d.degraded
+    eng = DecisionEngine()
+    decisions = [
+        eng.decide(reading(i * config.CYCLE_SECONDS, gas=700, temp=None,
+                           faults=["temperature:missing"]))
+        for i in range(config.GAS_CRITICAL_CONSEC)
+    ]
+    assert decisions[-1].level == Level.CRITICAL and decisions[-1].degraded
 
 
 def test_cnn_guard_cannot_be_bypassed_by_lowering_the_critical_threshold(monkeypatch):
@@ -126,3 +196,52 @@ def test_cnn_critical_still_works_with_a_real_gas_rise_even_if_thresholds_are_ed
 def test_flame_sensor_override_is_unaffected_by_the_cnn_guard():
     d = DecisionEngine().decide(reading(0, flame=1), Signals(fire_prob=0.0))
     assert d.level == Level.CRITICAL and "flame_sensor_override" in d.reasons
+
+
+def test_model_ensemble_weights_are_cnn_rf_lstm_50_25_25():
+    assert config.MODEL_WEIGHTS == {"cnn": 0.50, "rf": 0.25, "lstm": 0.25}
+    assert sum(config.MODEL_WEIGHTS.values()) == 1.0
+
+
+def test_weighted_model_ensemble_uses_available_scores_and_normalizes():
+    d = DecisionEngine().decide(
+        reading(0, gas=700),
+        Signals(fire_prob=0.8, ml_hazard=0.4, temp_anomaly=0.2),
+    )
+    assert d.ml_score == pytest.approx(0.55)
+
+
+def test_weighted_model_ensemble_never_causes_critical_by_itself():
+    d = DecisionEngine().decide(
+        reading(0),
+        Signals(fire_prob=1.0, ml_hazard=1.0, temp_anomaly=1.0),
+    )
+    assert d.level == Level.WARNING
+    assert d.ml_score < config.CRITICAL_THRESHOLD
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_weighted_model_ensemble_renormalizes_when_models_are_missing():
+    d = DecisionEngine().decide(reading(0, gas=700), Signals(ml_hazard=0.4))
+    assert d.ml_score == pytest.approx(0.4)
+
+
+def test_lstm_cannot_physically_corroborate_cnn_or_trigger_shutdown():
+    d = DecisionEngine().decide(
+        reading(0, gas=180, temp=25.0),
+        Signals(fire_prob=0.99, temp_anomaly=1.0),
+    )
+    assert d.level == Level.WARNING
+    assert "cnn_fire_unconfirmed_warning" in d.reasons
+    assert "cnn_fire_corroborated_override" not in d.reasons
+    assert "RELAY_SHUTDOWN" not in d.actions
+
+
+def test_trend_early_warning_requires_consecutive_predictions(monkeypatch):
+    eng = DecisionEngine()
+    monkeypatch.setattr(eng.forecaster, "update", lambda ts, score: (0.71, 0.02))
+    first = eng.decide(reading(0))
+    second = eng.decide(reading(0.5))
+    assert not first.early_warning
+    assert second.early_warning
+    assert "early_warning" in second.reasons

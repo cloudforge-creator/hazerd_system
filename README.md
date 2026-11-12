@@ -18,8 +18,12 @@ When the hardware arrives: flash `arduino/hazard_sensors/hazard_sensors.ino`, th
 | M5 Flask admin dashboard: login, roles, live monitoring, alerts, logs, config, camera, personnel, users | 8.0 | implemented; package test records describe HTTP integration checks. Browser visual review and live camera operation still require a local run; face accuracy is unmeasured |
 | Testing/evaluation C1-C5, docs | 10.0, 12.0 | suite built and run on the project machine (`evaluation/results/REPORT.md`); real-hardware data pending |
 
+## Release readiness
+
+See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for the current acceptance gates, measured limitations, and the distinction between software verification and hardware-dependent validation. The project is an academic software prototype and is not certified safety equipment.
+
 ## Setup (Windows PowerShell)
-Use Python 3.10 for the project environment. The current packaging review passed compilation and 13 focused decision-engine tests; the complete test suite must be rerun after this release change in an environment with the project requirements installed.
+Use Python 3.10 for the project environment. **Latest local verification (2026-11-12): 170 tests passed** in the project environment. GitHub Actions run `43183400240` on commit `c2bb0f9` passed the Python test suite, Arduino Uno firmware source compilation, deterministic ML baseline training, PR smoke evaluation, and evaluation artifact upload. Full C1-C5 evaluation is intentionally reserved for `push` to `main` or manual `workflow_dispatch`; it was skipped in this pull-request run. The local full C1-C5 result and hosted PR smoke result are separate pieces of evidence.
 ```powershell
 py -3.10 -m venv venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
@@ -59,7 +63,7 @@ next-batch (drift) and 1-5 -> 6-10 results. Quote the drift results, not just th
 ```powershell
 python -m ml.train_ml                       # models must exist, otherwise only the rule-based system is evaluated
 python -m evaluation.run_all --quick        # smoke run, about 1 minute
-python -m evaluation.run_all                # full run, roughly 10-15 minutes -> evaluation/results/REPORT.md + results.json
+python -m evaluation.run_all                # full run; runtime is machine-dependent and may be lengthy -> evaluation/results/REPORT.md + results.json
 ```
 It drives the REAL pipeline (not mocks) and reports each measure against a target, marking FAIL honestly.
 - **C1** state classification + critical-event detection; **C2** early-warning detection, lead time, false alarms;
@@ -135,9 +139,11 @@ is only enabled at runtime if retrained on this device's own logs, and only if i
 - All thresholds live in `src/config.py` and must be recalibrated on real hardware.
 
 
-## Release review notes (4 November 2026)
-- This ZIP is a software/simulator delivery, not a physically validated or certified industrial safety product.
-- The trained fire CNN is below its F1/recall targets. CNN-only evidence is capped at WARNING; a CNN-driven CRITICAL override requires independent gas, temperature or flame evidence.
-- The included C1-C5 report is dated 27 October 2026 and has three failed metric rows. Re-run it after the latest decision-engine guard change.
-- Final verification run: 150 tests passed (Python 3.12, TensorFlow 2.18, scikit-learn 1.5), including regression tests for the CNN guard (it cannot be bypassed by editing the CRITICAL threshold or the corroboration setting). Re-run under Python 3.10 before submission.
-- See `../../2_Documentation/FINAL_SUBMISSION_GATE.md` (when using the ZIP layout) for all remaining evidence and university sign-off requirements.
+## Latest software verification snapshot (12 November 2026)
+
+- Delivery scope is software and simulator verification. This is an academic prototype, not certified industrial safety equipment.
+- Local verification: 170 Python tests passed and the full local C1-C5 evaluation completed. GitHub Actions run `43183400240` on commit `c2bb0f9` passed Python tests, Arduino Uno source compilation, deterministic ML baseline training, PR smoke evaluation, and artifact upload. The full C1-C5 evaluation was intentionally skipped for this pull-request event; it runs on `push` to `main` or manual `workflow_dispatch` (90-minute job timeout).
+- Latest recorded local C1-C5 rule-plus-ML results: C1 macro-F1 0.9082; C2 early-warning detection 0.9764 with a 0.1795 false-alarm run rate (the <=0.10 target is not met); C4 gas-leak clean false-shutdown commands occurred in 7/11 clean runs; C3 full-cycle p99 latency 31.929 ms; C5 projected Python heap growth 1.03 MB/day.
+- The fire CNN test F1 is 0.881 and recall is 0.892, below the project targets of 0.90 and 0.92. CNN-only evidence remains guarded and is not camera-specific field validation.
+- C1/C2/C4 use synthetic held-out scenarios. C4 records software relay commands, not confirmed physical actuation. Face-recognition false-accept performance has not been measured on real users.
+- See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for acceptance gates, known limitations, and the distinction between local and CI evidence.

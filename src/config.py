@@ -13,14 +13,13 @@ VALID_RANGES = {
     "flame": (0, 1),
 }
 
-LOG_PATH = "data/logs/sensor_log.csv"
-
 # ---------------------------------------------------------------------------
 # M3 decision logic. Rule-based scoring is the SAFETY FLOOR: AI scores may raise
 # a score but never lower it. Calibrate these on real hardware later.
 # ---------------------------------------------------------------------------
 GAS_SAFE_MAX = 300            # raw ADC at/below this -> gas score 0
 GAS_CRITICAL = 600            # raw ADC at/above this -> gas score 1
+GAS_CRITICAL_CONSEC = 3      # require 3 consecutive critical gas cycles (1.5 s at 2 Hz)
 TEMP_SAFE_MAX = 40.0          # deg C
 TEMP_CRITICAL = 70.0
 TEMP_RATE_CRITICAL = 2.0      # deg C per second rise -> rate score 1
@@ -44,6 +43,7 @@ FORECAST_MIN_SLOPE = 0.01     # score units per second
 # M4 response
 NOTIFY_COOLDOWN_S = 30.0
 DB_PATH = "data/hazard.db"
+LOG_PATH = "data/logs/sensor_log.csv"
 READINGS_KEEP_ROWS = 2_419_200   # 14 days at 2 readings/s; older sensor_readings rows are pruned
 PRUNE_EVERY_S = 3600
 
@@ -51,8 +51,13 @@ PRUNE_EVERY_S = 3600
 # ML integration (Phase M2)
 # ---------------------------------------------------------------------------
 MODEL_DIR = "models"
+# Runtime model ensemble: CNN / Random Forest / temperature LSTM.
+# Weights are normalized and applied only to available, valid model outputs.
+MODEL_WEIGHTS = {"cnn": 0.50, "rf": 0.25, "lstm": 0.25}
 ML_LEVEL_SCORES = {0: 0.0, 1: 0.55, 2: 0.85}   # SAFE / WARNING / CRITICAL -> risk score
+ML_SOLO_MAX_SCORE = 0.69                     # ML ensemble alone cannot command a CRITICAL shutdown
 ML_EARLY_CONSEC = 2                             # consecutive steps above threshold -> alarm
+TREND_EARLY_CONSEC = 2                          # consecutive predictive-trend cycles -> early warning
 
 # ---------------------------------------------------------------------------
 # Personnel recognition / camera (all editable live from the dashboard unless noted)

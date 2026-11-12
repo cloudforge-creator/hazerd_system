@@ -19,8 +19,7 @@ background thread, so a dead network cannot delay the shutdown logic; delivery r
 Telegram: create a bot with @BotFather, send it a message, and read your chat id from the bot's `getUpdates`.
 
 ## Behaviour you should know
-- The relay is energised only while the software is running and has armed it. If the PC, the link or the monitor stops,
-  the machine is shut down (fail-safe). After an outage press **Re-arm machine** (allowed only when SAFE).
+- The software attempts to shut the relay down if the monitoring loop reaches its consecutive-error limit or the link fails. This is a software command, not proof of physical fail-safe behavior; verify the actual relay polarity, power-loss state, and supervised low-voltage behavior on the target hardware before making a physical fail-safe claim. After an outage press **Re-arm machine** (allowed only when SAFE).
 - HTTP ingest: commands such as `RELAY:0` reach the device in the reply to its next reading, so allow up to one poll interval (0.5 s) of delay.
 - Dashboard is plain HTTP on this machine only. To expose it to a network use a TLS reverse proxy or a VPN, and keep `--host` at the default otherwise.
 - Back up `data/hazard.db` (all settings, users, people templates, logs) and `data/secret_key`. Keep both private.

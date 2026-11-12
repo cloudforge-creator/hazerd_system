@@ -36,6 +36,8 @@ class PersonnelMonitor(threading.Thread):
         self._snapshot, self._in_hazard = [], []
         self._stop_evt = threading.Event()
         self._last_ts = 0.0
+        self._last_frame_at = None
+        self._camera_stale = False
         self.frames = self.errors = 0
         self.last_error: Optional[str] = None
         self.process_ms = 0.0
@@ -56,7 +58,22 @@ class PersonnelMonitor(threading.Thread):
     def status(self) -> dict:
         return {"running": self.is_alive(), "frames": self.frames, "errors": self.errors,
                 "last_error": self.last_error, "process_ms": round(self.process_ms, 1),
-                "tracks": len(self.snapshot())}
+                "tracks": len(self.snapshot()), "camera_state": "STALE" if self._camera_stale else "LIVE"}
+
+    def _expire_stale_state(self) -> None:
+        """Expire tracks and occupancy when the camera stops producing fresh frames."""
+        closed = list(self.tracker.tracks)
+        self.tracker.tracks.clear()
+        for track in closed:
+            if track.person:
+                try:
+                    self.store.log_event("PERSON_LEFT", track.id, track.person, detail="camera frame became stale")
+                except Exception as exc:
+                    self.errors += 1
+                    self.last_error = f"{exc.__class__.__name__}: {exc}"
+        with self._lock:
+            self._snapshot, self._in_hazard = [], []
+        self._camera_stale = True
 
     # ------------------------------------------------------------------ thread
     def run(self) -> None:
@@ -66,11 +83,17 @@ class PersonnelMonitor(threading.Thread):
             frame, ts = self.hub.latest()
             if frame is not None and ts != self._last_ts:
                 self._last_ts = ts
+                self._last_frame_at = self.clock()
+                self._camera_stale = False
                 try:
                     self.process(frame, ts)
                 except Exception as exc:
                     self.errors += 1
                     self.last_error = f"{exc.__class__.__name__}: {exc}"
+            elif frame is None and self._last_frame_at is not None:
+                stale_after = getattr(self.hub, "stale_s", 2.0)
+                if self.clock() - self._last_frame_at > stale_after and not self._camera_stale:
+                    self._expire_stale_state()
             self._stop_evt.wait(max(0.01, period - (time.time() - t0)))
 
     def stop(self) -> None:
@@ -81,6 +104,8 @@ class PersonnelMonitor(threading.Thread):
     # ------------------------------------------------------------------ one frame
     def process(self, frame, ts: float) -> list:
         t0 = time.time()
+        self._last_frame_at = self.clock()
+        self._camera_stale = False
         h, w = frame.shape[:2]
         dets = []
         for d in self.engine.detect_and_embed(frame):

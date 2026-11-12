@@ -51,3 +51,17 @@ def test_simulator_is_deterministic():
     a = SimulatedSensorReader("normal", seed=1).read().gas_raw
     b = SimulatedSensorReader("normal", seed=1).read().gas_raw
     assert a == b
+
+
+def test_non_finite_sensor_values_become_faults_not_exceptions():
+    for value in ("Infinity", "-Infinity", "NaN"):
+        r = build_reading(parse_line(f"GAS:{value},TEMP:25,HUM:50,FLAME:0"), "serial")
+        assert not r.valid and r.gas_raw is None and "gas_raw:missing" in r.faults
+    r = build_reading(parse_line("GAS:300,TEMP:25,HUM:50,FLAME:Infinity"), "serial")
+    assert not r.valid and r.flame is None and "flame:missing" in r.faults
+
+
+def test_integer_sensor_fields_reject_fractional_values():
+    r = build_reading(parse_line("GAS:12.5,TEMP:25,HUM:50,FLAME:0.5"), "serial")
+    assert not r.valid and r.gas_raw is None and r.flame is None
+    assert "gas_raw:not_integer" in r.faults and "flame:not_integer" in r.faults

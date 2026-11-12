@@ -1,9 +1,4 @@
-"""Runs the monitoring loop in a background thread for the dashboard.
-
-FAIL-SAFE: if the loop fails MAX_CONSECUTIVE_ERRORS cycles in a row (e.g. the board is unplugged),
-it sends a relay shutdown and marks the system 'crashed'. A machine must never keep running
-unmonitored just because the monitor died.
-"""
+"""Runs the monitoring loop in a background thread for the dashboard."""
 from __future__ import annotations
 
 import threading
@@ -63,7 +58,7 @@ class Runner(threading.Thread):
                 consecutive = 0
                 if self.on_step:
                     self.on_step(r, d, ex)
-            except Exception as exc:          # keep monitoring through transient faults
+            except Exception as exc:
                 consecutive += 1
                 self.live.error(exc)
                 self.system.storage.log_system("runner_error", f"{exc.__class__.__name__}: {exc}")
@@ -78,9 +73,23 @@ class Runner(threading.Thread):
         try:
             self.system.responder.link.send("RELAY:0")
             self.system.responder.relay_latched = True
+            self.system.storage.log_system(
+                "relay_shutdown_sent",
+                "RELAY:0 serial write completed; firmware acknowledgement not available",
+            )
+        except Exception as exc:
+            self.live.error(exc)
+            try:
+                self.system.storage.log_system(
+                    "relay_shutdown_failed",
+                    f"RELAY:0 command could not be sent: {exc.__class__.__name__}: {exc}",
+                )
+            except Exception:
+                pass
+        try:
+            self.system.storage.log_system("runner_crashed", "monitoring stopped; relay shutdown command attempted")
         except Exception:
             pass
-        self.system.storage.log_system("runner_crashed", "monitoring stopped; relay shutdown sent")
 
     def stop(self) -> None:
         self._stop_evt.set()

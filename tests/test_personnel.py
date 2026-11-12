@@ -204,7 +204,7 @@ def test_identity_switch_needs_consistent_contrary_evidence():
 def test_people_in_hazard_triggers_emergency_only_when_system_is_not_safe():
     d = DecisionEngine().decide(reading(0, gas=700), Signals(people_in_hazard=["Ali Khan (Operator)"]))
     assert "NOTIFY_EMERGENCY" in d.actions and "people_in_hazard_zone=Ali Khan (Operator)" in d.reasons
-    assert d.level == Level.CRITICAL
+    assert d.level == Level.WARNING
     safe = DecisionEngine().decide(reading(0), Signals(people_in_hazard=["Ali Khan (Operator)"]))
     assert safe.level == Level.SAFE and "NOTIFY_EMERGENCY" not in safe.actions
     plain = DecisionEngine().decide(reading(0, gas=700))
@@ -406,3 +406,16 @@ def test_face_engine_reports_missing_models_clearly():
         assert "missing" in msg
         with pytest.raises(FileNotFoundError, match="download_face_models"):
             FaceEngine()
+
+
+def test_stale_camera_state_expires_tracks_and_hazard_occupancy(store):
+    person(store, "Ali Khan", "Operator", 1)
+    d = Detection((20, 80, 70, 70), 0.9, vec(1, 0.2, 3))
+    mon, hub, lv = make_monitor(store, [[d]], [ZONE], level=Level.CRITICAL)
+    feed(mon, 5)
+    assert mon.snapshot() and mon.people_in_hazard()
+    mon._expire_stale_state()
+    assert mon.snapshot() == [] and mon.people_in_hazard() == []
+    assert mon.status()["camera_state"] == "STALE"
+    assert any(e["kind"] == "PERSON_LEFT" and e["detail"] == "camera frame became stale"
+               for e in store.recent_events(100))

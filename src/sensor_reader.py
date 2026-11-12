@@ -1,10 +1,7 @@
-"""M1 data acquisition: parsing, validation and the serial source.
-
-Serial line format sent by the Arduino (one line per cycle):
-    GAS:312,TEMP:27.4,HUM:55.0,FLAME:0
-"""
+"""M1 data acquisition: parsing, validation and the serial source."""
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -28,7 +25,6 @@ class Reading:
 
 
 def parse_line(line: str) -> dict:
-    """'GAS:312,TEMP:27.4' -> {'GAS': '312', 'TEMP': '27.4'}"""
     out = {}
     for part in line.strip().split(","):
         if ":" not in part:
@@ -41,13 +37,12 @@ def parse_line(line: str) -> dict:
 def _to_float(value) -> Optional[float]:
     try:
         x = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
-    return None if x != x else x  # NaN -> None
+    return x if math.isfinite(x) else None
 
 
 def validate(reading: Reading) -> list:
-    """Return a list of fault strings; empty list means the reading is valid."""
     faults = []
     for name, (lo, hi) in config.VALID_RANGES.items():
         value = getattr(reading, name)
@@ -58,26 +53,36 @@ def validate(reading: Reading) -> list:
     return faults
 
 
+def _to_integer(value: Optional[float]) -> Optional[int]:
+    if value is None or not value.is_integer():
+        return None
+    return int(value)
+
+
 def build_reading(fields: dict, source: str, timestamp: Optional[float] = None) -> Reading:
     gas = _to_float(fields.get("GAS"))
     temp = _to_float(fields.get("TEMP"))
     hum = _to_float(fields.get("HUM"))
     flame = _to_float(fields.get("FLAME"))
+    gas_int, flame_int = _to_integer(gas), _to_integer(flame)
     reading = Reading(
         timestamp=time.time() if timestamp is None else timestamp,
-        gas_raw=int(gas) if gas is not None else None,
+        gas_raw=gas_int,
         temperature=temp,
         humidity=hum,
-        flame=int(flame) if flame is not None else None,
+        flame=flame_int,
         source=source,
     )
     reading.faults = validate(reading)
+    if gas is not None and gas_int is None:
+        reading.faults.append("gas_raw:not_integer")
+    if flame is not None and flame_int is None:
+        reading.faults.append("flame:not_integer")
     return reading
 
 
 class SerialSensorReader:
-    """Reads the Arduino. If the board is missing it RAISES - it never silently
-    falls back to simulation, so you always know which mode you are in."""
+    """Reads the Arduino; serial mode never silently falls back to simulation."""
 
     def __init__(self, port: Optional[str] = None, baud: int = config.SERIAL_BAUD,
                  timeout: float = 2.0):
@@ -91,18 +96,24 @@ class SerialSensorReader:
             port = ports[0].device
         self.port = port
         self.ser = serial.Serial(port, baud, timeout=timeout)
-        time.sleep(2.0)  # Arduino resets when the port opens
+        time.sleep(2.0)
         self.ser.reset_input_buffer()
+        self.send("HEARTBEAT")  # arm the firmware watchdog before system startup sends RELAY:1
 
     def read(self) -> Reading:
         raw = self.ser.readline().decode("ascii", errors="ignore")
         now = time.time()
         if not raw.strip():
             return Reading(timestamp=now, faults=["link:no_data"], source="serial")
-        return build_reading(parse_line(raw), "serial", now)
+        reading = build_reading(parse_line(raw), "serial", now)
+        if reading.valid:
+            self.send("HEARTBEAT")
+        return reading
+
+    def heartbeat(self) -> None:
+        self.send("HEARTBEAT")
 
     def send(self, command: str) -> None:
-        """e.g. 'RELAY:1', 'RELAY:0', 'BUZZER:1', 'BUZZER:0'"""
         self.ser.write((command + "\n").encode("ascii"))
 
     def close(self) -> None:

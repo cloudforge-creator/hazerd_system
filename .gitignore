@@ -11,3 +11,5 @@ firebase-key*.json
 data/secret_key
 data/runtime_config.json
 *.db
+
+/data/notifications.json

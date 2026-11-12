@@ -71,3 +71,20 @@ def test_early_warning_notifies_without_shutdown():
     link, _, note, r = setup()
     r.execute(make(Level.SAFE, early=True, actions=["LOG_ALERT", "NOTIFY_ADMIN"]))
     assert len(note.messages) == 1 and "RELAY:0" not in link.sent
+
+
+def test_arm_refreshes_watchdog_before_enabling_serial_relay():
+    class HeartbeatLink:
+        def __init__(self):
+            self.events = []
+
+        def heartbeat(self):
+            self.events.append("HEARTBEAT")
+
+        def send(self, command):
+            self.events.append(command)
+
+    link = HeartbeatLink()
+    response = ResponseManager(link)
+    response.arm()
+    assert link.events == ["HEARTBEAT", "RELAY:1"]

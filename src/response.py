@@ -44,6 +44,9 @@ class ResponseManager:
 
     def arm(self) -> None:
         """Power the machine (relay on). Called once at start-up."""
+        heartbeat = getattr(self.link, "heartbeat", None)
+        if callable(heartbeat):
+            heartbeat()
         self.link.send("RELAY:1")
         self.relay_latched = False
 

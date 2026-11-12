@@ -1,8 +1,7 @@
 """Runtime fire detection from camera frames (WBS 5.2.3, 9.3).
 
 FrameSource  : webcam index, video file (loops), or a folder of images (for demos).
-FireCNN      : loads models/fire_cnn.keras (+ meta); input is raw RGB 0..255 (the model
-               rescales internally), output is class probabilities.
+FireCNN      : loads models/fire_cnn.keras or portable .npz weights (+ meta).
 FireSignals  : turns frames into Signals(fire_prob=...), averaged over the last frames.
 Missing model/camera never silently becomes 'no fire': status says what is active.
 """
@@ -42,10 +41,10 @@ class FrameSource:
             self._i += 1
             return img
         ok, frame = self.cap.read()
-        if not ok and self._is_file:             # video ended -> loop for demos
+        if not ok and self._is_file:
             self.cap.set(self.cv2.CAP_PROP_POS_FRAMES, 0)
             ok, frame = self.cap.read()
-        return frame if ok else None             # camera failure -> None (caller counts it)
+        return frame if ok else None
 
     def close(self):
         if self.cap is not None:
@@ -56,9 +55,7 @@ WEIGHTS_NPZ = "fire_cnn_weights.npz"
 
 
 def build_inference_model(img_size: int, n_classes: int = 3):
-    """Inference-only twin of the training model: Rescaling -> MobileNetV2(avg pool) -> Dense(softmax).
-    The training model also has random augmentation layers and a Dropout; neither has weights and both are
-    inactive at inference, so they are left out on purpose (this also makes the augmentation defect impossible)."""
+    """Inference-only twin of the training model."""
     import tensorflow as tf
     L = tf.keras.layers
     base = tf.keras.applications.MobileNetV2(input_shape=(img_size, img_size, 3), include_top=False,
@@ -76,16 +73,16 @@ def _sha256(path: str) -> str:
 
 
 def export_weights(model_path: str, out_path: str) -> str:
-    """Save the weights of a trained fire_cnn.keras as a plain NumPy .npz (independent of Keras/TensorFlow
-    versions). Run this where the .keras loads (Colab right after training, or any matching environment)."""
+    """Export trained Keras weights to a portable NumPy archive."""
     import tensorflow as tf
     model = tf.keras.models.load_model(model_path, compile=False)
-    base = next(l for l in model.layers if hasattr(l, "layers"))            # the nested MobileNetV2 model
+    base = next(l for l in model.layers if hasattr(l, "layers"))
     dense = [l for l in model.layers if l.__class__.__name__ == "Dense"][-1]
     arrays = {f"base_{i:04d}": w for i, w in enumerate(base.get_weights())}
     k, b = dense.get_weights()
     np.savez(out_path, dense_kernel=k, dense_bias=b, img_size=np.array(model.input_shape[1]),
-             n_classes=np.array(k.shape[1]), n_base=np.array(len(arrays)), source_sha256=np.array(_sha256(model_path)), **arrays)
+             n_classes=np.array(k.shape[1]), n_base=np.array(len(arrays)),
+             source_sha256=np.array(_sha256(model_path)), **arrays)
     return out_path
 
 
@@ -101,37 +98,56 @@ class FireCNN:
     def _load(self, model_dir: str) -> None:
         mp = os.path.join(model_dir, "fire_cnn.keras")
         jp = os.path.join(model_dir, "fire_cnn_meta.json")
-        if not (os.path.exists(mp) and os.path.exists(jp)):
-            return
-        err = None
-        try:
-            import tensorflow as tf
-            self.model = tf.keras.models.load_model(mp, compile=False)
-            self.meta = json.load(open(jp))
-            self.status = "fire CNN loaded"
-            return
-        except Exception as exc:                       # typically a Keras/TensorFlow version mismatch
-            err = exc
-        # fallback: portable weights exported from the same .keras file
         wp = os.path.join(model_dir, WEIGHTS_NPZ)
-        self.model = None
+        if not os.path.exists(jp):
+            self.status = "fire CNN not loaded (metadata missing)"
+            return
+        try:
+            with open(jp, encoding="utf-8") as f:
+                meta = json.load(f)
+            if not isinstance(meta.get("class_names"), list) or len(meta["class_names"]) < 2:
+                raise ValueError("metadata class_names must contain at least two classes")
+            img_size = int(meta["img_size"])
+            if img_size <= 0:
+                raise ValueError("metadata img_size must be positive")
+        except Exception as exc:
+            self.status = f"fire CNN metadata invalid ({exc.__class__.__name__}: {exc})"
+            return
+
+        keras_error = None
+        if os.path.exists(mp):
+            try:
+                import tensorflow as tf
+                self.model = tf.keras.models.load_model(mp, compile=False)
+                self.meta = meta
+                self.status = "fire CNN loaded"
+                return
+            except Exception as exc:
+                keras_error = exc
+
+        # Portable weights are independently loadable; the .keras artifact is optional.
         if os.path.exists(wp):
             try:
-                z = np.load(wp, allow_pickle=False)
-                if str(z["source_sha256"]) != _sha256(mp):
-                    raise ValueError("fire_cnn_weights.npz does not match fire_cnn.keras (re-export it)")
-                model = build_inference_model(int(z["img_size"]), int(z["n_classes"]))
-                base = next(l for l in model.layers if hasattr(l, "layers"))
-                base.set_weights([z[f"base_{i:04d}"] for i in range(int(z["n_base"]))])
-                model.layers[-1].set_weights([z["dense_kernel"], z["dense_bias"]])
-                self.model, self.meta = model, json.load(open(jp))
-                self.status = "fire CNN loaded (portable weights; the .keras file does not load in this TensorFlow)"
+                with np.load(wp, allow_pickle=False) as z:
+                    n_classes = int(z["n_classes"])
+                    if n_classes != len(meta["class_names"]) or int(z["img_size"]) != img_size:
+                        raise ValueError("portable weights do not match metadata dimensions/classes")
+                    if os.path.exists(mp) and "source_sha256" in z.files:
+                        if str(z["source_sha256"]) != _sha256(mp):
+                            raise ValueError("portable weights do not match fire_cnn.keras; re-export them")
+                    model = build_inference_model(img_size, n_classes)
+                    base = next(l for l in model.layers if hasattr(l, "layers"))
+                    base.set_weights([z[f"base_{i:04d}"] for i in range(int(z["n_base"]))])
+                    model.layers[-1].set_weights([z["dense_kernel"], z["dense_bias"]])
+                self.model, self.meta = model, meta
+                reason = "keras artifact missing" if not os.path.exists(mp) else "Keras load failed"
+                self.status = f"fire CNN loaded (portable .npz weights; {reason})"
                 return
-            except Exception as exc2:
-                err = f"{err}; fallback also failed: {exc2.__class__.__name__}: {exc2}"
-        msg = " ".join(str(err).split())[:220]
-        self.status = (f"fire CNN failed to load ({err.__class__.__name__ if not isinstance(err, str) else 'error'}: {msg}) - camera ignored. "
-                       f"Fix: run 'python -m ml.export_fire_weights' where the model loads, or use the TensorFlow version it was trained with.")
+            except Exception as exc:
+                keras_error = exc
+
+        detail = f"; Keras: {keras_error}" if keras_error else ""
+        self.status = f"fire CNN failed to load (no usable model/portable weights{detail}) - camera ignored"
 
     @property
     def enabled(self) -> bool:
@@ -146,9 +162,6 @@ class FireCNN:
         s = int(self.meta["img_size"])
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         x = cv2.resize(rgb, (s, s)).astype("float32")[None]
-        # training=False is essential: the saved model contains random augmentation layers
-        # (flip, rotation, zoom, contrast) that are ACTIVE by default in Keras 3 when the model
-        # is called directly. model.predict() disables them; a bare model(x) does not.
         return np.asarray(self.model(x, training=False)).reshape(-1)
 
 

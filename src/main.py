@@ -44,13 +44,25 @@ def append_row(path: str, reading) -> None:
 
 
 def cleanup(parts) -> None:
-    for obj in (parts.monitor, parts.hub, parts.notifier):
+    # Stop producers first, then drain notifications while the storage logger is alive.
+    for obj in (parts.monitor, parts.hub):
         stop = getattr(obj, "stop", None)
         if stop:
             try:
                 stop()
             except Exception:
                 pass
+    notifier = getattr(parts, "notifier", None)
+    if notifier is not None:
+        try:
+            drained = notifier.flush(timeout=5.0)
+            if not drained:
+                print(f"[notify] shutdown flush timed out; pending={notifier.q.qsize()}")
+            stopped = notifier.stop(timeout=5.0)
+            if not stopped:
+                print(f"[notify] worker did not stop cleanly; pending={notifier.q.qsize()}")
+        except Exception as exc:
+            print(f"[notify] shutdown error: {exc.__class__.__name__}: {exc}")
 
 
 def run_dashboard(args, system, reader, ai_lines, parts) -> None:

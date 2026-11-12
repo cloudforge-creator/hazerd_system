@@ -1,0 +1,101 @@
+name: Software CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install core dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile application and tests
+        run: python -m compileall -q src ml tests
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+  firmware-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install Arduino AVR core and DHT dependencies
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli lib install "DHT sensor library"
+          arduino-cli lib install "Adafruit Unified Sensor"
+
+      - name: Compile Arduino Uno sensor firmware
+        run: arduino-cli compile --fqbn arduino:avr:uno arduino/hazard_sensors
+
+  full-evaluation:
+    needs: python-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install core dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Train deterministic synthetic ML baseline
+        run: python -m ml.train_ml --runs 700 --seed 42
+
+      - name: Run PR smoke evaluation
+        if: github.event_name == 'pull_request'
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python -u -m evaluation.run_all --quick --out evaluation/ci-results --seed 2026
+
+      - name: Run full C1-C5 evaluation
+        if: github.event_name != 'pull_request'
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python -u -m evaluation.run_all --out evaluation/ci-results --seed 2026
+
+      - name: Upload evaluation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c1-c5-evaluation
+          path: |
+            evaluation/ci-results/REPORT.md
+            evaluation/ci-results/results.json
+            models/metrics/ml_metrics.json
+          if-no-files-found: warn
