@@ -8,7 +8,7 @@ This checklist covers repository software only. It does not certify a physical i
 
 The reliability changes are in PR #1. The current `fix/software-reliability` branch includes a conservative guard against ML-state-only CRITICAL shutdowns, event-level validation for early-warning threshold selection, and an Arduino Uno firmware compile check in CI.
 
-**Status: not yet release-ready.** Local verification on 2026-11-12 reports 170 Python tests passed and a complete local C1-C5 evaluation. For GitHub Actions commit `116ef4e`, the Python test job and firmware compile job passed, but the full C1-C5 job was cancelled at the configured 60-minute timeout after reaching C5. The CI timeout has now been raised to 90 minutes; the next run must confirm whether the hosted evaluation completes. C2 still fails its false-alarm acceptance target, so release acceptance remains blocked.
+**Status: not yet release-ready.** Local verification on 2026-11-12 reports 170 Python tests passed and a complete local C1-C5 evaluation. GitHub Actions run `43183400240` on commit `c2bb0f9` passed Python tests, Arduino Uno firmware source compilation, deterministic ML baseline training, PR smoke evaluation, and artifact upload. Full C1-C5 evaluation was intentionally skipped for the pull-request event; it runs on pushes to `main` or manual `workflow_dispatch` with a 90-minute timeout. C2 still fails its false-alarm acceptance target, so release acceptance remains blocked.
 
 ## Changes made in this release-readiness branch
 
@@ -67,8 +67,10 @@ The following are the results from the current verification cycle, generated 202
 ## Software verification checklist
 
 - [ ] PR #1 reviewed and merged.
-- [x] Python test suite passes: 170 passed.
-- [x] Arduino Uno firmware source compilation passes locally.
+- [x] Python test suite passes locally (170 passed) and in GitHub Actions run `43183400240`.
+- [x] Arduino Uno firmware source compilation passes in GitHub Actions run `43183400240` (compile-only; no board upload or electrical validation).
+- [x] GitHub Actions pull-request smoke evaluation and artifact upload pass (run `43183400240`).
+- [ ] Full C1-C5 evaluation in hosted GitHub Actions; intentionally not run on pull requests, available through manual workflow dispatch or push to `main`.
 - [x] Full C1-C5 evaluation rerun after the decision-engine change; current verified result is complete and software-only.
 - [ ] C2 detection >= 0.90 AND false-alarm run rate <= 0.10 on held-out runs (detection passes at 0.9764; false-alarm rate remains 0.1795, so C2 is parked and acceptance is not achieved).
 - [ ] C4 gas-leak false shutdown behavior reviewed and accepted on a sufficiently representative clean set. Current software evaluation records false-shutdown commands in 7 of 11 clean runs in the gas-leak scenario; physical relay actuation remains unvalidated.
