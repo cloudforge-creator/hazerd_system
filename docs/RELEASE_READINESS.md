@@ -6,9 +6,9 @@ Last reviewed: 2026-11-12
 
 This checklist covers repository software only. It does not certify a physical installation, sensor calibration, relay behavior, or industrial safety performance.
 
-The reliability changes are in PR #1. The follow-up branch release/software-readiness adds a conservative guard against ML-state-only CRITICAL shutdowns, event-level validation for early-warning threshold selection, and a firmware compile check in CI.
+The reliability changes are in PR #1. The current `fix/software-reliability` branch includes a conservative guard against ML-state-only CRITICAL shutdowns, event-level validation for early-warning threshold selection, and an Arduino Uno firmware compile check in CI.
 
-**Status: not yet release-ready.** A previous PR CI run passed Python tests, Arduino Uno source compilation, and a C1-C5 evaluation. Current local verification also passes all 170 Python tests. C2 still fails its false-alarm acceptance target, so release acceptance remains blocked. CI must be rerun against the updated commit.
+**Status: not yet release-ready.** Local verification on 2026-11-12 reports 170 Python tests passed and a complete local C1-C5 evaluation. For GitHub Actions commit `116ef4e`, the Python test job and firmware compile job passed, but the full C1-C5 job was cancelled at the configured 60-minute timeout after reaching C5. The CI timeout has now been raised to 90 minutes; the next run must confirm whether the hosted evaluation completes. C2 still fails its false-alarm acceptance target, so release acceptance remains blocked.
 
 ## Changes made in this release-readiness branch
 
