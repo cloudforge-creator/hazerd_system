@@ -23,7 +23,7 @@ When the hardware arrives: flash `arduino/hazard_sensors/hazard_sensors.ino`, th
 See [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for the current acceptance gates, measured limitations, and the distinction between software verification and hardware-dependent validation. The project is an academic software prototype and is not certified safety equipment.
 
 ## Setup (Windows PowerShell)
-Use Python 3.10 for the project environment. **Latest local verification (2026-11-12): 170 tests passed** in the project environment. On GitHub Actions commit `116ef4e`, the Python test job and Arduino Uno firmware compile job passed; the full C1-C5 job was cancelled at its 60-minute timeout. The local test result and the CI job results are separate pieces of evidence.
+Use Python 3.10 for the project environment. **Latest local verification (2026-11-12): 170 tests passed** in the project environment. GitHub Actions run `43183400240` on commit `c2bb0f9` passed the Python test suite, Arduino Uno firmware source compilation, deterministic ML baseline training, PR smoke evaluation, and evaluation artifact upload. Full C1-C5 evaluation is intentionally reserved for `push` to `main` or manual `workflow_dispatch`; it was skipped in this pull-request run. The local full C1-C5 result and hosted PR smoke result are separate pieces of evidence.
 ```powershell
 py -3.10 -m venv venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
@@ -142,7 +142,7 @@ is only enabled at runtime if retrained on this device's own logs, and only if i
 ## Latest software verification snapshot (12 November 2026)
 
 - Delivery scope is software and simulator verification. This is an academic prototype, not certified industrial safety equipment.
-- Local verification: 170 Python tests passed. On GitHub Actions commit `116ef4e`, the Python test job and Arduino Uno source compilation passed; the full C1-C5 job was cancelled at its 60-minute timeout. The workflow timeout has been increased to 90 minutes for the next run.
+- Local verification: 170 Python tests passed and the full local C1-C5 evaluation completed. GitHub Actions run `43183400240` on commit `c2bb0f9` passed Python tests, Arduino Uno source compilation, deterministic ML baseline training, PR smoke evaluation, and artifact upload. The full C1-C5 evaluation was intentionally skipped for this pull-request event; it runs on `push` to `main` or manual `workflow_dispatch` (90-minute job timeout).
 - Latest recorded local C1-C5 rule-plus-ML results: C1 macro-F1 0.9082; C2 early-warning detection 0.9764 with a 0.1795 false-alarm run rate (the <=0.10 target is not met); C4 gas-leak clean false-shutdown commands occurred in 7/11 clean runs; C3 full-cycle p99 latency 31.929 ms; C5 projected Python heap growth 1.03 MB/day.
 - The fire CNN test F1 is 0.881 and recall is 0.892, below the project targets of 0.90 and 0.92. CNN-only evidence remains guarded and is not camera-specific field validation.
 - C1/C2/C4 use synthetic held-out scenarios. C4 records software relay commands, not confirmed physical actuation. Face-recognition false-accept performance has not been measured on real users.
